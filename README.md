@@ -1,4 +1,4 @@
-# anhanh — trang bio-link cá nhân (có trang quản trị + lưu MongoDB)
+# milky — trang bio-link cá nhân (có trang quản trị + lưu MongoDB)
 
 Trang cá nhân kiểu "dark aesthetic" (giống guns.lol): nền động hiệu ứng hạt,
 card kính mờ, hiệu ứng gõ chữ, nhạc nền, danh sách link mạng xã hội.
@@ -98,7 +98,7 @@ server.js           Express server: API + phục vụ file tĩnh
 | Biến | Bắt buộc | Mô tả |
 |---|---|---|
 | `MONGODB_URI` | nên đặt khi deploy | chuỗi kết nối MongoDB; thiếu thì tự rơi về chế độ file |
-| `MONGODB_DB` | không | tên database, mặc định `anhanh_biolink` |
+| `MONGODB_DB` | không | tên database, mặc định `milky_biolink` |
 | `PORT` | tự động (Railway cấp) | cổng server lắng nghe |
 | `ADMIN_PASSWORD` | nên đặt | mật khẩu đăng nhập `/admin` |
 | `SESSION_SECRET` | nên đặt | khoá bí mật để mã hoá session cookie |
