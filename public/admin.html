@@ -182,7 +182,7 @@
       <label>Ảnh bìa nhạc</label>
       <img id="song-cover-preview" class="avatar-preview small" alt="" />
       <input type="file" id="song-cover-input" accept="image/png,image/jpeg,image/webp,image/gif" />
-      <button type="button" class="btn small" id="upload-song-cover">Tải ảnh bìa</button>
+      <button type="button" class="btn primary small" id="upload-song-cover">Tải ảnh bìa</button>
 
       <label>Tên bài hát hiển thị</label>
       <input type="text" id="field-songTitle" maxlength="80" />
@@ -199,13 +199,63 @@
     </section>
 
     <section class="panel wide">
-      <h2>Vị trí các thành phần</h2>
-      <p class="hint">Kéo thả từng khối trực tiếp trên bản xem trước bên dưới để đổi vị trí, sau đó bấm "Lưu vị trí".</p>
+      <h2>Kích thước &amp; màu khung Discord / Nhạc / Link</h2>
+      <p class="hint">Ngoài kéo-giãn trực tiếp ở khung xem trước bên dưới, bạn có thể chỉnh màu nền &amp; viền của từng khung tại đây.</p>
+
+      <div class="box-style-grid">
+        <div class="box-style-col">
+          <h3>Khung Discord</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-discordBg" />
+          <label>Độ mờ nền: <span id="discordBgOpacity-value">60</span>%</label>
+          <input type="range" id="field-discordBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-discordBorder" />
+          <label>Độ mờ viền: <span id="discordBorderOpacity-value">10</span>%</label>
+          <input type="range" id="field-discordBorderOpacity" min="0" max="100" step="1" />
+        </div>
+
+        <div class="box-style-col">
+          <h3>Khung nhạc</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-musicBg" />
+          <label>Độ mờ nền: <span id="musicBgOpacity-value">60</span>%</label>
+          <input type="range" id="field-musicBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-musicBorder" />
+          <label>Độ mờ viền: <span id="musicBorderOpacity-value">10</span>%</label>
+          <input type="range" id="field-musicBorderOpacity" min="0" max="100" step="1" />
+        </div>
+
+        <div class="box-style-col">
+          <h3>Các nút link</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-linksBg" />
+          <label>Độ mờ nền: <span id="linksBgOpacity-value">55</span>%</label>
+          <input type="range" id="field-linksBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-linksBorder" />
+          <label>Độ mờ viền: <span id="linksBorderOpacity-value">12</span>%</label>
+          <input type="range" id="field-linksBorderOpacity" min="0" max="100" step="1" />
+        </div>
+      </div>
+
+      <button type="button" class="btn primary" id="save-boxstyles">Lưu màu khung</button>
+      <p class="status" id="status-boxstyles"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Vị trí &amp; kích thước các thành phần</h2>
+      <p class="hint">
+        Kéo thả từng khối trực tiếp trên bản xem trước bên dưới để đổi vị trí.
+        Kéo ô vuông tím ở góc dưới-phải mỗi khối để đổi kích thước: khung Discord/nhạc kéo giãn dài ra hoặc phóng to tùy ý,
+        các khối còn lại phóng to/nhỏ đều. Xong thì bấm "Lưu vị trí &amp; kích thước".
+      </p>
       <div class="position-frame-wrap">
         <iframe id="position-iframe" class="position-iframe" src="/?editPositions=1"></iframe>
       </div>
-      <button type="button" class="btn primary" id="save-positions">Lưu vị trí</button>
-      <button type="button" class="btn ghost" id="reset-positions">Khôi phục vị trí mặc định</button>
+      <button type="button" class="btn primary" id="save-positions">Lưu vị trí &amp; kích thước</button>
+      <button type="button" class="btn ghost" id="reset-positions">Khôi phục mặc định</button>
       <p class="status" id="status-positions"></p>
     </section>
 
