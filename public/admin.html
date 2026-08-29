@@ -48,6 +48,128 @@
       <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
       <button type="button" class="btn primary" id="upload-avatar">Tải ảnh lên</button>
       <p class="status" id="status-avatar"></p>
+      <p class="hint">Bấm vào avatar ngoài trang sẽ hiện popup — chỉnh nội dung ở mục "Nội dung khi click" bên dưới.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Nền trang (ảnh / gif)</h2>
+      <img id="background-preview" class="background-preview" alt="nền" />
+      <input type="file" id="background-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn primary" id="upload-background">Tải ảnh nền lên</button>
+      <p class="status" id="status-background"></p>
+
+      <label>Màu nền dự phòng (khi chưa có ảnh)</label>
+      <input type="color" id="field-backgroundColor" />
+
+      <label>Độ tối lớp phủ lên ảnh nền: <span id="overlay-value">45</span>%</label>
+      <input type="range" id="field-overlayOpacity" min="0" max="90" step="1" />
+
+      <button type="button" class="btn primary" id="save-appearance-bg">Lưu nền</button>
+      <p class="status" id="status-appearance-bg"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Màu chữ &amp; font chữ</h2>
+      <label>Màu chữ chính</label>
+      <input type="color" id="field-textColor" />
+
+      <label>Màu nhấn (viền / icon / con trỏ nhấp nháy)</label>
+      <input type="color" id="field-accentColor" />
+
+      <label>Font chữ</label>
+      <select id="field-fontFamily">
+        <option value="Space Grotesk">Space Grotesk (mặc định)</option>
+        <option value="Inter">Inter</option>
+        <option value="Poppins">Poppins</option>
+        <option value="Quicksand">Quicksand</option>
+        <option value="Be Vietnam Pro">Be Vietnam Pro</option>
+        <option value="Nunito">Nunito</option>
+        <option value="Montserrat">Montserrat</option>
+        <option value="Comfortaa">Comfortaa</option>
+        <option value="Josefin Sans">Josefin Sans</option>
+        <option value="Playfair Display">Playfair Display</option>
+        <option value="Dancing Script">Dancing Script</option>
+        <option value="Pacifico">Pacifico</option>
+        <option value="custom">Tự nhập tên Google Font khác...</option>
+      </select>
+      <input type="text" id="field-customFontFamily" placeholder="ví dụ: Baloo 2" class="hidden" />
+
+      <button type="button" class="btn primary" id="save-appearance-text">Lưu màu chữ &amp; font</button>
+      <p class="status" id="status-appearance-text"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Con trỏ chuột tùy chỉnh</h2>
+      <img id="cursor-preview" class="cursor-preview" alt="con trỏ" />
+      <input type="file" id="cursor-input" accept="image/png,image/x-icon,.cur" />
+      <button type="button" class="btn primary" id="upload-cursor">Tải con trỏ lên</button>
+      <p class="status" id="status-cursor"></p>
+      <p class="hint">Nên dùng ảnh png nhỏ (32×32px) nền trong suốt.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Widget Discord</h2>
+      <label class="switch-row">
+        <input type="checkbox" id="field-discordEnabled" />
+        <span>Hiện widget Discord ngoài trang</span>
+      </label>
+
+      <label>Kiểu hiển thị</label>
+      <select id="field-discordMode">
+        <option value="manual">Tự viết nội dung</option>
+        <option value="live">Tự cập nhật trực tiếp từ Discord</option>
+      </select>
+
+      <div id="discord-manual-fields">
+        <label>Tên hiển thị</label>
+        <input type="text" id="field-discordManualName" maxlength="40" />
+        <label>Tag / số hiệu (không cần dấu #)</label>
+        <input type="text" id="field-discordManualTag" maxlength="40" />
+        <label>Trạng thái</label>
+        <select id="field-discordManualStatus">
+          <option value="online">Online</option>
+          <option value="idle">Away</option>
+          <option value="dnd">Không làm phiền</option>
+          <option value="offline">Offline</option>
+        </select>
+        <label>Dòng chữ nhỏ (đang làm gì / lời nhắn)</label>
+        <input type="text" id="field-discordManualMessage" maxlength="140" />
+        <label>Ảnh avatar Discord hiện trong widget</label>
+        <img id="discord-avatar-preview" class="avatar-preview small" alt="" />
+        <input type="file" id="discord-avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+        <button type="button" class="btn small" id="upload-discord-avatar">Tải ảnh</button>
+      </div>
+
+      <div id="discord-live-fields" class="hidden">
+        <label>Discord User ID</label>
+        <input type="text" id="field-discordId" placeholder="ví dụ: 123456789012345678" />
+        <p class="hint">Chế độ này lấy dữ liệu trực tiếp qua Lanyard API (miễn phí, không cần bot).
+        Tài khoản Discord của bạn cần tham gia server Lanyard (discord.gg/lanyard) thì trạng thái mới cập nhật được.</p>
+      </div>
+
+      <button type="button" class="btn primary" id="save-discord">Lưu widget Discord</button>
+      <p class="status" id="status-discord"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Nội dung khi click vào avatar</h2>
+      <label class="switch-row">
+        <input type="checkbox" id="field-clickEnabled" />
+        <span>Bật popup khi bấm vào avatar</span>
+      </label>
+
+      <label>Danh sách câu hiện ra (ngẫu nhiên 1 câu mỗi lần bấm)</label>
+      <div id="click-messages"></div>
+      <button type="button" class="btn small" id="add-click-message">+ thêm câu</button>
+
+      <label>Font chữ popup (bỏ trống = dùng font chung)</label>
+      <input type="text" id="field-clickFont" placeholder="ví dụ: Pacifico" />
+
+      <label>Màu chữ popup</label>
+      <input type="color" id="field-clickColor" />
+
+      <button type="button" class="btn primary" id="save-click">Lưu nội dung click</button>
+      <p class="status" id="status-click"></p>
     </section>
 
     <section class="panel">
@@ -56,6 +178,16 @@
       <input type="file" id="song-input" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,.mp3" />
       <button type="button" class="btn primary" id="upload-song">Tải nhạc lên</button>
       <p class="status" id="status-song"></p>
+
+      <label>Ảnh bìa nhạc</label>
+      <img id="song-cover-preview" class="avatar-preview small" alt="" />
+      <input type="file" id="song-cover-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn small" id="upload-song-cover">Tải ảnh bìa</button>
+
+      <label>Tên bài hát hiển thị</label>
+      <input type="text" id="field-songTitle" maxlength="80" />
+      <button type="button" class="btn primary" id="save-song-title">Lưu tên bài hát</button>
+      <p class="status" id="status-song-title"></p>
     </section>
 
     <section class="panel wide">
@@ -64,6 +196,17 @@
       <button type="button" class="btn small" id="add-link">+ thêm link</button>
       <button type="button" class="btn primary" id="save-links">Lưu danh sách link</button>
       <p class="status" id="status-links"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Vị trí các thành phần</h2>
+      <p class="hint">Kéo thả từng khối trực tiếp trên bản xem trước bên dưới để đổi vị trí, sau đó bấm "Lưu vị trí".</p>
+      <div class="position-frame-wrap">
+        <iframe id="position-iframe" class="position-iframe" src="/?editPositions=1"></iframe>
+      </div>
+      <button type="button" class="btn primary" id="save-positions">Lưu vị trí</button>
+      <button type="button" class="btn ghost" id="reset-positions">Khôi phục vị trí mặc định</button>
+      <p class="status" id="status-positions"></p>
     </section>
 
   </main>
