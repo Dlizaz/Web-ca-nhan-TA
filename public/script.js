@@ -3,6 +3,7 @@ const TYPE_SPEED = 55; // ms mỗi ký tự
 const ERASE_SPEED = 30;
 const PAUSE_AFTER_TYPE = 1800;
 let BIO_LINES = ["chào mừng đến trang của tôi"];
+const LANYARD_POLL_MS = 20000;
 // ============================================================================
 
 const ICON_PATHS = {
@@ -21,6 +22,16 @@ function iconSvg(name) {
   return `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${path}</svg>`;
 }
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[m]));
+}
+
+// Có đang mở ở chế độ chỉnh vị trí (được nhúng qua iframe từ trang admin) không
+const params = new URLSearchParams(location.search);
+const EDIT_POSITIONS = params.get('editPositions') === '1';
+
 // ---------- Load settings từ server ----------
 let siteSettings = null;
 
@@ -32,6 +43,16 @@ async function loadSiteSettings() {
     siteSettings = { username: 'milky', bioLines: ['...'], links: [] };
   }
 
+  applyIdentity();
+  applyAppearance();
+  applyDiscord();
+  applyLinks();
+  applyMusic();
+  applyPositions();
+}
+
+// ---------- Tên / avatar / bio ----------
+function applyIdentity() {
   document.getElementById('username-text').textContent = siteSettings.username || 'milky';
   BIO_LINES = (siteSettings.bioLines && siteSettings.bioLines.length) ? siteSettings.bioLines : BIO_LINES;
 
@@ -40,14 +61,113 @@ async function loadSiteSettings() {
     avatarImg.src = siteSettings.avatar;
     avatarImg.style.display = '';
   }
+}
 
-  if (siteSettings.song) {
-    document.getElementById('bg-audio').src = siteSettings.song;
-  } else {
-    document.getElementById('music-toggle').style.display = 'none';
+// ---------- Giao diện: nền, màu chữ, font, con trỏ ----------
+function applyAppearance() {
+  const root = document.documentElement;
+
+  if (siteSettings.textColor) root.style.setProperty('--text', siteSettings.textColor);
+  if (siteSettings.accentColor) root.style.setProperty('--accent', siteSettings.accentColor);
+  root.style.setProperty('--overlay-opacity', (Number(siteSettings.overlayOpacity ?? 45) / 100).toString());
+
+  // Nền
+  const bgLayer = document.getElementById('bg-layer');
+  if (siteSettings.background) {
+    bgLayer.style.backgroundImage = `url('${siteSettings.background}')`;
+  }
+  if (siteSettings.backgroundColor) {
+    bgLayer.style.backgroundColor = siteSettings.backgroundColor;
   }
 
-  const linksContainer = document.getElementById('links-container');
+  // Font: tải Google Font tương ứng rồi gán biến CSS
+  const chosenFont = siteSettings.fontFamily === 'custom'
+    ? (siteSettings.customFontFamily || 'Space Grotesk')
+    : (siteSettings.fontFamily || 'Space Grotesk');
+
+  if (chosenFont && chosenFont !== 'Space Grotesk') {
+    const link = document.getElementById('dynamic-font-link');
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(chosenFont).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap`;
+  }
+  root.style.setProperty('--font-display', `'${chosenFont}', sans-serif`);
+
+  // Popup khi click: font + màu riêng
+  if (siteSettings.clickFont) root.style.setProperty('--click-font', `'${siteSettings.clickFont}', sans-serif`);
+  if (siteSettings.clickColor) root.style.setProperty('--click-color', siteSettings.clickColor);
+
+  // Con trỏ chuột tùy chỉnh
+  const body = document.body;
+  if (siteSettings.cursor) {
+    root.style.setProperty('--custom-cursor-url', `url('${siteSettings.cursor}') 4 4, auto`);
+    body.classList.add('has-custom-cursor');
+  } else {
+    body.classList.remove('has-custom-cursor');
+  }
+}
+
+// ---------- Widget Discord ----------
+let lanyardTimer = null;
+
+function applyDiscord() {
+  const box = document.getElementById('el-discord');
+  if (!siteSettings.discordEnabled) {
+    box.hidden = true;
+    if (lanyardTimer) clearInterval(lanyardTimer);
+    return;
+  }
+  box.hidden = false;
+
+  if (siteSettings.discordMode === 'live' && siteSettings.discordId) {
+    fetchLanyard();
+    if (lanyardTimer) clearInterval(lanyardTimer);
+    lanyardTimer = setInterval(fetchLanyard, LANYARD_POLL_MS);
+  } else {
+    if (lanyardTimer) clearInterval(lanyardTimer);
+    renderDiscordManual();
+  }
+}
+
+function renderDiscordManual() {
+  document.getElementById('discord-avatar').src = siteSettings.discordManualAvatar || '';
+  document.getElementById('discord-name').textContent = siteSettings.discordManualName || 'discord';
+  document.getElementById('discord-tag').textContent = siteSettings.discordManualTag ? `#${siteSettings.discordManualTag}` : '';
+  document.getElementById('discord-message').textContent = siteSettings.discordManualMessage || '';
+  document.getElementById('discord-status-dot').dataset.status = siteSettings.discordManualStatus || 'online';
+}
+
+async function fetchLanyard() {
+  try {
+    const res = await fetch(`https://api.lanyard.rest/v1/users/${siteSettings.discordId}`);
+    const json = await res.json();
+    if (!json.success) throw new Error('lanyard lỗi');
+    const d = json.data;
+    const u = d.discord_user;
+    const avatarUrl = u.avatar
+      ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64`
+      : `https://cdn.discordapp.com/embed/avatars/${Number(u.discriminator || 0) % 5}.png`;
+
+    document.getElementById('discord-avatar').src = avatarUrl;
+    document.getElementById('discord-name').textContent = u.global_name || u.username || 'discord';
+    document.getElementById('discord-tag').textContent = u.discriminator && u.discriminator !== '0' ? `#${u.discriminator}` : '';
+
+    const activity = (d.activities || []).find((a) => a.type !== 4) || (d.activities || [])[0];
+    let msg = '';
+    if (activity) msg = activity.name || '';
+    else if (d.discord_status === 'online') msg = 'đang online';
+    else if (d.discord_status === 'idle') msg = 'đang away';
+    else if (d.discord_status === 'dnd') msg = 'không làm phiền';
+    else msg = 'offline';
+    document.getElementById('discord-message').textContent = msg;
+    document.getElementById('discord-status-dot').dataset.status = d.discord_status || 'offline';
+  } catch (e) {
+    // API lỗi hoặc user chưa join server Lanyard -> tạm hiện dữ liệu thủ công nếu có
+    renderDiscordManual();
+  }
+}
+
+// ---------- Links ----------
+function applyLinks() {
+  const linksContainer = document.getElementById('el-links');
   linksContainer.innerHTML = '';
   (siteSettings.links || []).forEach((link) => {
     const a = document.createElement('a');
@@ -60,23 +180,113 @@ async function loadSiteSettings() {
   });
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[m]));
+// ---------- Nhạc nền: ảnh bìa, tiêu đề, thanh tua ----------
+function applyMusic() {
+  const box = document.getElementById('el-music');
+  const audio = document.getElementById('bg-audio');
+
+  if (!siteSettings.song) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  audio.src = siteSettings.song;
+
+  const cover = document.getElementById('music-cover');
+  if (siteSettings.songCover) {
+    cover.src = siteSettings.songCover;
+    cover.style.display = '';
+  } else {
+    cover.style.display = 'none';
+  }
+
+  document.getElementById('music-title').textContent = siteSettings.songTitle || 'nhạc nền';
+}
+
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ---------- Vị trí tự do ----------
+function applyPositions() {
+  const positions = siteSettings.positions || {};
+  document.querySelectorAll('.pos-el').forEach((el) => {
+    const key = el.dataset.posKey || el.id.replace('el-', '');
+    const p = positions[key];
+    if (p) {
+      el.style.top = `${p.top}%`;
+      el.style.left = `${p.left}%`;
+    }
+  });
+}
+
+// gán data-pos-key cho từng khối để đồng bộ với settings.positions
+['avatar', 'username', 'bio', 'views', 'discord', 'links', 'music'].forEach((key) => {
+  const el = document.getElementById(`el-${key}`);
+  if (el) el.dataset.posKey = key;
+});
+
+// ---------- Chế độ chỉnh vị trí (mở trong iframe từ trang admin) ----------
+function setupPositionEditing() {
+  if (!EDIT_POSITIONS) return;
+  document.body.classList.add('edit-positions');
+
+  let dragEl = null;
+
+  function onPointerDown(e) {
+    dragEl = e.currentTarget;
+    dragEl.classList.add('dragging');
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragEl) return;
+    const leftPct = Math.min(100, Math.max(0, (e.clientX / window.innerWidth) * 100));
+    const topPct = Math.min(100, Math.max(0, (e.clientY / window.innerHeight) * 100));
+    dragEl.style.left = `${leftPct}%`;
+    dragEl.style.top = `${topPct}%`;
+  }
+
+  function onPointerUp() {
+    if (!dragEl) return;
+    const key = dragEl.dataset.posKey;
+    const left = parseFloat(dragEl.style.left);
+    const top = parseFloat(dragEl.style.top);
+    dragEl.classList.remove('dragging');
+    dragEl = null;
+    if (window.parent) {
+      window.parent.postMessage({ type: 'milky-position-update', key, top, left }, '*');
+    }
+  }
+
+  document.querySelectorAll('.pos-el').forEach((el) => {
+    el.addEventListener('pointerdown', onPointerDown);
+  });
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+
+  if (window.parent) {
+    window.parent.postMessage({ type: 'milky-editor-ready' }, '*');
+  }
 }
 
 // ---------- Enter overlay + audio ----------
 const overlay = document.getElementById('enter-overlay');
-const card = document.getElementById('card');
+const stage = document.getElementById('stage');
 const audio = document.getElementById('bg-audio');
 const musicBtn = document.getElementById('music-toggle');
+const musicSeek = document.getElementById('music-seek');
+const musicCurrent = document.getElementById('music-current');
+const musicDuration = document.getElementById('music-duration');
 
 async function enterSite() {
   await loadSiteSettings();
   overlay.classList.add('fade-out');
-  card.classList.remove('hidden');
-  requestAnimationFrame(() => card.classList.add('visible'));
+  stage.classList.remove('hidden');
+  requestAnimationFrame(() => stage.classList.add('visible'));
 
   audio.volume = 0.4;
   audio.play().then(() => {
@@ -88,6 +298,8 @@ async function enterSite() {
   setTimeout(() => overlay.remove(), 600);
   startTyping();
   startViewCounter();
+  setupClickBubble();
+  setupPositionEditing();
 }
 
 overlay.addEventListener('click', enterSite, { once: true });
@@ -100,6 +312,49 @@ musicBtn.addEventListener('click', () => {
     musicBtn.classList.remove('playing');
   }
 });
+
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  musicSeek.value = (audio.currentTime / audio.duration) * 1000;
+  musicCurrent.textContent = formatTime(audio.currentTime);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  musicDuration.textContent = formatTime(audio.duration);
+});
+
+let seeking = false;
+musicSeek.addEventListener('input', () => {
+  seeking = true;
+  if (audio.duration) {
+    musicCurrent.textContent = formatTime((musicSeek.value / 1000) * audio.duration);
+  }
+});
+musicSeek.addEventListener('change', () => {
+  if (audio.duration) {
+    audio.currentTime = (musicSeek.value / 1000) * audio.duration;
+  }
+  seeking = false;
+});
+
+// ---------- Popup khi click vào avatar ----------
+function setupClickBubble() {
+  const avatarImg = document.getElementById('avatar-img');
+  const bubble = document.getElementById('click-bubble');
+  let hideTimer = null;
+
+  avatarImg.addEventListener('click', () => {
+    if (!siteSettings || !siteSettings.clickEnabled) return;
+    const messages = siteSettings.clickMessages && siteSettings.clickMessages.length
+      ? siteSettings.clickMessages
+      : ['xin chào'];
+    const msg = messages[Math.floor(Math.random() * messages.length)];
+    bubble.textContent = msg;
+    bubble.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => bubble.classList.remove('show'), 2200);
+  });
+}
 
 // ---------- Typing effect cho bio ----------
 function startTyping() {
@@ -151,7 +406,7 @@ function startViewCounter() {
   }, 20);
 }
 
-// ---------- Particle background theo con trỏ ----------
+// ---------- Particle background theo con trỏ (giữ nguyên hiệu ứng gốc) ----------
 const canvas = document.getElementById('fx-canvas');
 const ctx = canvas.getContext('2d');
 let particles = [];
@@ -200,3 +455,10 @@ loop();
 setInterval(() => {
   spawnParticle(Math.random() * w, Math.random() * h);
 }, 300);
+
+// Nếu đang ở chế độ chỉnh vị trí trong iframe admin, vào thẳng trang luôn (khỏi phải bấm "nhấn để vào trang")
+if (EDIT_POSITIONS) {
+  window.addEventListener('DOMContentLoaded', () => {
+    overlay.click();
+  });
+}
