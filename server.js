@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme123';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-doi-di-nha';
 
+const ALLOWED_ICONS = ['discord', 'instagram', 'tiktok', 'youtube', 'twitter', 'github', 'spotify', 'link'];
+const ALLOWED_UPLOAD_KINDS = ['avatar', 'song', 'background', 'cursor', 'songCover', 'discordManualAvatar'];
+const ALLOWED_POSITION_KEYS = ['avatar', 'username', 'bio', 'views', 'discord', 'links', 'music'];
+const HEX_RE = /^#[0-9a-fA-F]{3,8}$/;
+
 app.use(express.json());
 app.use(session({
   secret: SESSION_SECRET,
@@ -29,10 +34,10 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
     const kind = req.uploadKind;
-    const okImage = /image\/(png|jpe?g|webp|gif)/.test(file.mimetype);
+    const okImage = /image\/(png|jpe?g|webp|gif|x-icon|vnd\.microsoft\.icon)/.test(file.mimetype);
     const okAudio = /audio\/(mpeg|mp3|wav|ogg)/.test(file.mimetype) || file.originalname.endsWith('.mp3');
-    if (kind === 'avatar' && !okImage) return cb(new Error('File avatar phải là ảnh (png/jpg/webp/gif)'));
     if (kind === 'song' && !okAudio) return cb(new Error('File nhạc phải là audio (mp3/wav/ogg)'));
+    if (kind !== 'song' && !okImage) return cb(new Error('File phải là ảnh (png/jpg/webp/gif)'));
     cb(null, true);
   },
 });
@@ -70,30 +75,79 @@ app.get('/api/session', (req, res) => {
 // ---------- Protected: update settings ----------
 app.post('/api/settings', requireAuth, async (req, res) => {
   try {
-    const current = await store.getSettings();
+    const b = req.body || {};
     const patch = {};
-    const { username, bioLines, links } = req.body || {};
 
-    if (typeof username === 'string' && username.trim()) {
-      patch.username = username.trim().slice(0, 40);
+    // ----- Thông tin cơ bản -----
+    if (typeof b.username === 'string' && b.username.trim()) {
+      patch.username = b.username.trim().slice(0, 40);
     }
-    if (Array.isArray(bioLines)) {
-      patch.bioLines = bioLines
+    if (Array.isArray(b.bioLines)) {
+      patch.bioLines = b.bioLines
         .filter((l) => typeof l === 'string' && l.trim())
-        .slice(0, 6)
+        .slice(0, 8)
         .map((l) => l.slice(0, 120));
     }
-    if (Array.isArray(links)) {
-      patch.links = links
+    if (Array.isArray(b.links)) {
+      patch.links = b.links
         .filter((l) => l && typeof l.url === 'string' && l.url.trim())
-        .slice(0, 10)
+        .slice(0, 12)
         .map((l) => ({
           label: String(l.label || 'Link').slice(0, 30),
           url: String(l.url).slice(0, 300),
-          icon: ['discord', 'instagram', 'tiktok', 'youtube', 'twitter', 'github', 'spotify', 'link'].includes(l.icon)
-            ? l.icon
-            : 'link',
+          icon: ALLOWED_ICONS.includes(l.icon) ? l.icon : 'link',
         }));
+    }
+    if (typeof b.songTitle === 'string') patch.songTitle = b.songTitle.slice(0, 80);
+
+    // ----- Giao diện -----
+    if (typeof b.backgroundColor === 'string' && HEX_RE.test(b.backgroundColor)) patch.backgroundColor = b.backgroundColor;
+    if (typeof b.textColor === 'string' && HEX_RE.test(b.textColor)) patch.textColor = b.textColor;
+    if (typeof b.accentColor === 'string' && HEX_RE.test(b.accentColor)) patch.accentColor = b.accentColor;
+    if (b.overlayOpacity !== undefined) {
+      const n = Number(b.overlayOpacity);
+      if (!Number.isNaN(n)) patch.overlayOpacity = Math.min(90, Math.max(0, n));
+    }
+    if (typeof b.fontFamily === 'string') patch.fontFamily = b.fontFamily.slice(0, 60);
+    if (typeof b.customFontFamily === 'string') patch.customFontFamily = b.customFontFamily.slice(0, 60);
+
+    // ----- Discord -----
+    if (typeof b.discordEnabled === 'boolean') patch.discordEnabled = b.discordEnabled;
+    if (['manual', 'live'].includes(b.discordMode)) patch.discordMode = b.discordMode;
+    if (typeof b.discordId === 'string') patch.discordId = b.discordId.trim().slice(0, 32);
+    if (typeof b.discordManualName === 'string') patch.discordManualName = b.discordManualName.slice(0, 40);
+    if (typeof b.discordManualTag === 'string') patch.discordManualTag = b.discordManualTag.slice(0, 40);
+    if (['online', 'idle', 'dnd', 'offline'].includes(b.discordManualStatus)) patch.discordManualStatus = b.discordManualStatus;
+    if (typeof b.discordManualMessage === 'string') patch.discordManualMessage = b.discordManualMessage.slice(0, 140);
+
+    // ----- Popup khi click -----
+    if (typeof b.clickEnabled === 'boolean') patch.clickEnabled = b.clickEnabled;
+    if (Array.isArray(b.clickMessages)) {
+      patch.clickMessages = b.clickMessages
+        .filter((m) => typeof m === 'string' && m.trim())
+        .slice(0, 15)
+        .map((m) => m.slice(0, 60));
+    }
+    if (typeof b.clickFont === 'string') patch.clickFont = b.clickFont.slice(0, 60);
+    if (typeof b.clickColor === 'string' && HEX_RE.test(b.clickColor)) patch.clickColor = b.clickColor;
+
+    // ----- Vị trí tự do (merge nông theo từng khối để không mất phần chưa gửi) -----
+    if (b.positions && typeof b.positions === 'object') {
+      const posPatch = {};
+      for (const key of ALLOWED_POSITION_KEYS) {
+        const p = b.positions[key];
+        if (p && typeof p === 'object') {
+          const top = Number(p.top);
+          const left = Number(p.left);
+          if (!Number.isNaN(top) && !Number.isNaN(left)) {
+            posPatch[key] = { top: Math.min(100, Math.max(0, top)), left: Math.min(100, Math.max(0, left)) };
+          }
+        }
+      }
+      if (Object.keys(posPatch).length) {
+        const current = await store.getSettings();
+        patch.positions = { ...(current.positions || {}), ...posPatch };
+      }
     }
 
     const next = await store.updateSettings(patch);
@@ -104,30 +158,22 @@ app.post('/api/settings', requireAuth, async (req, res) => {
   }
 });
 
-// ---------- Protected: uploads ----------
-app.post('/api/upload/avatar', requireAuth, (req, res, next) => {
-  req.uploadKind = 'avatar';
-  next();
-}, upload.single('file'), async (req, res) => {
-  try {
-    const { url } = await store.saveUpload('avatar', req.file);
-    res.json({ ok: true, avatar: url });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'lỗi khi lưu avatar' });
+// ---------- Protected: upload chung (avatar / song / background / cursor / songCover / discordManualAvatar) ----------
+app.post('/api/upload/:kind', requireAuth, (req, res, next) => {
+  const kind = req.params.kind;
+  if (!ALLOWED_UPLOAD_KINDS.includes(kind)) {
+    return res.status(400).json({ error: 'loại file không hợp lệ' });
   }
-});
-
-app.post('/api/upload/song', requireAuth, (req, res, next) => {
-  req.uploadKind = 'song';
+  req.uploadKind = kind;
   next();
 }, upload.single('file'), async (req, res) => {
   try {
-    const { url } = await store.saveUpload('song', req.file);
-    res.json({ ok: true, song: url });
+    if (!req.file) return res.status(400).json({ error: 'chưa chọn file' });
+    const { url } = await store.saveUpload(req.uploadKind, req.file);
+    res.json({ ok: true, url, kind: req.uploadKind });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'lỗi khi lưu nhạc' });
+    res.status(500).json({ error: 'lỗi khi lưu file' });
   }
 });
 
