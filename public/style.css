@@ -118,7 +118,7 @@ body.has-custom-cursor * {
   position: fixed;
   top: 10%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--el-scale, 1));
   text-align: center;
   transition: top 0.15s ease, left 0.15s ease;
 }
@@ -135,6 +135,27 @@ body.edit-positions .pos-el {
   outline-offset: 6px;
   border-radius: 10px;
   cursor: grab;
+}
+
+/* Tay cầm kéo để đổi kích thước (chỉ hiện trong chế độ chỉnh vị trí ở trang admin) */
+.resize-handle {
+  display: none;
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: nwse-resize;
+  z-index: 1000;
+  touch-action: none;
+}
+
+body.edit-positions .pos-el .resize-handle {
+  display: block;
 }
 
 /* ---------- Avatar ---------- */
@@ -257,8 +278,8 @@ body.edit-positions .pos-el {
   gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(16, 16, 24, 0.6);
+  border: 1px solid var(--box-border, rgba(255,255,255,0.1));
+  background: var(--box-bg, rgba(16, 16, 24, 0.6));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   width: max-content;
@@ -328,8 +349,8 @@ body.edit-positions .pos-el {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(16, 16, 24, 0.55);
+  border: 1px solid var(--links-box-border, rgba(255,255,255,0.12));
+  background: var(--links-box-bg, rgba(16, 16, 24, 0.55));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: var(--text);
@@ -359,8 +380,8 @@ body.edit-positions .pos-el {
   gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(16, 16, 24, 0.6);
+  border: 1px solid var(--box-border, rgba(255,255,255,0.1));
+  background: var(--box-bg, rgba(16, 16, 24, 0.6));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   width: min(300px, 82vw);
