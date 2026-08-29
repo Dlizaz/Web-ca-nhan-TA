@@ -1,0 +1,18 @@
+{
+  "name": "anhanh-biolink",
+  "version": "1.0.0",
+  "description": "Trang bio-link cá nhân, style dark aesthetic, có trang quản trị upload trực tiếp",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "mongodb": "^7.6.0",
+    "multer": "^2.0.0"
+  }
+}
