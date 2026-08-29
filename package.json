@@ -1,5 +1,5 @@
 {
-  "name": "anhanh-biolink",
+  "name": "milky-biolink",
   "version": "1.0.0",
   "description": "Trang bio-link cá nhân, style dark aesthetic, có trang quản trị upload trực tiếp",
   "main": "server.js",
@@ -7,7 +7,7 @@
     "start": "node server.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "express": "^4.19.2",
