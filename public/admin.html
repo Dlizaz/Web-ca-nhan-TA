@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quản trị trang cá nhân</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <form id="login-form" class="panel">
+    <h1>Đăng nhập quản trị</h1>
+    <input type="password" id="login-password" placeholder="Mật khẩu admin" autocomplete="current-password" required />
+    <button type="submit">Đăng nhập</button>
+    <p id="login-error" class="error"></p>
+  </form>
+</div>
+
+<div id="admin-screen" class="screen hidden">
+  <header class="top">
+    <h1>Quản trị trang cá nhân</h1>
+    <div class="top-actions">
+      <a href="/" target="_blank" class="btn ghost">Xem trang</a>
+      <button id="logout-btn" class="btn ghost">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <section class="panel">
+      <h2>Thông tin cơ bản</h2>
+      <label>Tên hiển thị</label>
+      <input type="text" id="field-username" maxlength="40" />
+
+      <label>Tiểu sử (mỗi dòng sẽ tự động gõ chữ luân phiên)</label>
+      <div id="bio-lines"></div>
+      <button type="button" class="btn small" id="add-bio-line">+ thêm dòng</button>
+
+      <button type="button" class="btn primary" id="save-basic">Lưu thông tin</button>
+      <p class="status" id="status-basic"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Ảnh đại diện</h2>
+      <img id="avatar-preview" class="avatar-preview" alt="avatar" />
+      <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn primary" id="upload-avatar">Tải ảnh lên</button>
+      <p class="status" id="status-avatar"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Nhạc nền</h2>
+      <audio id="song-preview" controls></audio>
+      <input type="file" id="song-input" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,.mp3" />
+      <button type="button" class="btn primary" id="upload-song">Tải nhạc lên</button>
+      <p class="status" id="status-song"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Danh sách link</h2>
+      <div id="links-list"></div>
+      <button type="button" class="btn small" id="add-link">+ thêm link</button>
+      <button type="button" class="btn primary" id="save-links">Lưu danh sách link</button>
+      <p class="status" id="status-links"></p>
+    </section>
+
+  </main>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>
