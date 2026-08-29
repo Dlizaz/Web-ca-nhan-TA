@@ -1,4 +1,4 @@
-# anhanh — trang bio-link cá nhân
+# anh — trang bio-link cá nhân
 
 Trang cá nhân kiểu "dark aesthetic" (giống guns.lol): nền động theo hiệu ứng hạt,
 card kính mờ, hiệu ứng gõ chữ, nhạc nền, danh sách link mạng xã hội.
