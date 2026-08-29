@@ -29,10 +29,10 @@ async function loadSiteSettings() {
     const res = await fetch('/api/settings');
     siteSettings = await res.json();
   } catch {
-    siteSettings = { username: 'anhanh', bioLines: ['...'], links: [] };
+    siteSettings = { username: 'milky', bioLines: ['...'], links: [] };
   }
 
-  document.getElementById('username-text').textContent = siteSettings.username || 'anhanh';
+  document.getElementById('username-text').textContent = siteSettings.username || 'milky';
   BIO_LINES = (siteSettings.bioLines && siteSettings.bioLines.length) ? siteSettings.bioLines : BIO_LINES;
 
   const avatarImg = document.getElementById('avatar-img');
@@ -136,7 +136,7 @@ function startTyping() {
 // ---------- View counter (đếm bằng localStorage giả lập, thay bằng API nếu muốn thật) ----------
 function startViewCounter() {
   const el = document.getElementById('view-count');
-  const key = 'anhanh_views';
+  const key = 'milky_views';
   let count = parseInt(localStorage.getItem(key) || '0', 10);
   count += 1;
   localStorage.setItem(key, count);
