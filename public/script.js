@@ -22,6 +22,19 @@ function iconSvg(name) {
   return `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${path}</svg>`;
 }
 
+// Đổi mã màu hex (#rrggbb hoặc #rgb) + độ mờ (0-100) thành chuỗi rgba() dùng cho CSS
+function hexToRgba(hex, opacityPercent) {
+  if (!hex) return null;
+  let h = String(hex).replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length !== 6) return null;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const bch = parseInt(h.substring(4, 6), 16);
+  const a = Math.min(100, Math.max(0, Number(opacityPercent ?? 100))) / 100;
+  return `rgba(${r}, ${g}, ${bch}, ${a})`;
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (m) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -49,6 +62,7 @@ async function loadSiteSettings() {
   applyLinks();
   applyMusic();
   applyPositions();
+  applySizesAndColors();
 }
 
 // ---------- Tên / avatar / bio ----------
@@ -223,6 +237,57 @@ function applyPositions() {
   });
 }
 
+// ---------- Kích thước & màu khung tự chỉnh ----------
+const SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
+const BOX_KEYS = ['discord', 'music'];
+
+function applySizesAndColors() {
+  const sizes = siteSettings.sizes || {};
+  const boxStyles = siteSettings.boxStyles || {};
+
+  // Phóng to/nhỏ đều theo tỉ lệ
+  SCALE_KEYS.forEach((key) => {
+    const el = document.getElementById(`el-${key}`);
+    if (!el) return;
+    const s = sizes[key];
+    el.style.setProperty('--el-scale', s && s.scale ? s.scale : 1);
+  });
+
+  // Kéo giãn width/height cho khung Discord & khung nhạc
+  BOX_KEYS.forEach((key) => {
+    const el = document.getElementById(`el-${key}`);
+    if (!el) return;
+    const s = sizes[key];
+    if (s && s.width) {
+      el.style.width = `${s.width}px`;
+      el.style.maxWidth = 'none';
+    }
+    if (s && s.height) {
+      el.style.height = `${s.height}px`;
+    } else {
+      el.style.height = '';
+    }
+  });
+
+  // Màu nền / viền khung Discord & khung nhạc
+  BOX_KEYS.forEach((key) => {
+    const el = document.getElementById(`el-${key}`);
+    if (!el) return;
+    const st = boxStyles[key];
+    if (!st) return;
+    if (st.bg) el.style.setProperty('--box-bg', hexToRgba(st.bg, st.bgOpacity));
+    if (st.border) el.style.setProperty('--box-border', hexToRgba(st.border, st.borderOpacity));
+  });
+
+  // Màu nền / viền các nút link (đặt biến CSS trên khối chứa để các nút con thừa hưởng)
+  const linksEl = document.getElementById('el-links');
+  const lst = boxStyles.links;
+  if (linksEl && lst) {
+    if (lst.bg) linksEl.style.setProperty('--links-box-bg', hexToRgba(lst.bg, lst.bgOpacity));
+    if (lst.border) linksEl.style.setProperty('--links-box-border', hexToRgba(lst.border, lst.borderOpacity));
+  }
+}
+
 // gán data-pos-key cho từng khối để đồng bộ với settings.positions
 ['avatar', 'username', 'bio', 'views', 'discord', 'links', 'music'].forEach((key) => {
   const el = document.getElementById(`el-${key}`);
@@ -235,6 +300,8 @@ function setupPositionEditing() {
   document.body.classList.add('edit-positions');
 
   let dragEl = null;
+  let resizeEl = null;
+  let resizeStart = null;
 
   function onPointerDown(e) {
     dragEl = e.currentTarget;
@@ -243,6 +310,7 @@ function setupPositionEditing() {
   }
 
   function onPointerMove(e) {
+    if (resizeEl) return onResizeMove(e);
     if (!dragEl) return;
     const leftPct = Math.min(100, Math.max(0, (e.clientX / window.innerWidth) * 100));
     const topPct = Math.min(100, Math.max(0, (e.clientY / window.innerHeight) * 100));
@@ -251,6 +319,7 @@ function setupPositionEditing() {
   }
 
   function onPointerUp() {
+    if (resizeEl) return onResizeUp();
     if (!dragEl) return;
     const key = dragEl.dataset.posKey;
     const left = parseFloat(dragEl.style.left);
@@ -262,8 +331,64 @@ function setupPositionEditing() {
     }
   }
 
+  // ---- Tay cầm kéo-giãn: đặt ở góc dưới-phải mỗi khối ----
+  function onResizeDown(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    resizeEl = e.currentTarget.parentElement;
+    resizeEl.classList.add('dragging');
+    const rect = resizeEl.getBoundingClientRect();
+    resizeStart = { x: e.clientX, y: e.clientY, width: rect.width, height: rect.height };
+  }
+
+  function onResizeMove(e) {
+    if (!resizeEl || !resizeStart) return;
+    const key = resizeEl.dataset.posKey;
+    const dx = e.clientX - resizeStart.x;
+    const dy = e.clientY - resizeStart.y;
+
+    if (BOX_KEYS.includes(key)) {
+      // Khung dạng hộp (Discord / nhạc): kéo giãn width/height độc lập, có thể kéo dài ra hoặc phóng to
+      const newWidth = Math.max(160, Math.round(resizeStart.width + dx * 2));
+      const newHeight = Math.max(48, Math.round(resizeStart.height + dy * 2));
+      resizeEl.style.maxWidth = 'none';
+      resizeEl.style.width = `${newWidth}px`;
+      resizeEl.style.height = `${newHeight}px`;
+    } else {
+      // Khối dạng chữ/ảnh: phóng to/nhỏ đều theo tỉ lệ
+      const baseScale = parseFloat(resizeEl.style.getPropertyValue('--el-scale')) || 1;
+      const delta = (dx + dy) / 2 / 150;
+      const newScale = Math.min(3, Math.max(0.4, baseScale + delta));
+      resizeEl.style.setProperty('--el-scale', newScale.toFixed(2));
+    }
+  }
+
+  function onResizeUp() {
+    if (!resizeEl) return;
+    const key = resizeEl.dataset.posKey;
+    resizeEl.classList.remove('dragging');
+    const payload = { type: 'milky-size-update', key };
+    if (BOX_KEYS.includes(key)) {
+      const rect = resizeEl.getBoundingClientRect();
+      payload.width = Math.round(rect.width);
+      payload.height = Math.round(rect.height);
+    } else {
+      payload.scale = parseFloat(resizeEl.style.getPropertyValue('--el-scale')) || 1;
+    }
+    resizeEl = null;
+    resizeStart = null;
+    if (window.parent) {
+      window.parent.postMessage(payload, '*');
+    }
+  }
+
   document.querySelectorAll('.pos-el').forEach((el) => {
     el.addEventListener('pointerdown', onPointerDown);
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.title = 'kéo để đổi kích thước';
+    handle.addEventListener('pointerdown', onResizeDown);
+    el.appendChild(handle);
   });
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
