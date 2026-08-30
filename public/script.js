@@ -67,6 +67,7 @@ async function loadSiteSettings() {
   applyAppearance();
   applyEnterOverlay();
   applyGlow();
+  applySparkleEffects();
   applyTextStyles();
   applyDiscord();
   applyAvatarFrame();
@@ -788,20 +789,42 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function spawnParticle(x, y) {
+function spawnParticle(x, y, rgb) {
   particles.push({
     x, y,
     vx: (Math.random() - 0.5) * 1.2,
     vy: (Math.random() - 0.5) * 1.2,
     life: 1,
     size: Math.random() * 2.5 + 1,
-    hue: Math.random() > 0.5 ? '124,92,255' : '255,92,154',
+    hue: rgb || '124,92,255',
   });
   if (particles.length > 160) particles.shift();
 }
 
+// Màu kim tuyến (dạng "r,g,b") cho 2 hiệu ứng particle: theo con trỏ chuột, và rải khắp trang.
+// Cache lại thành biến để không phải đổi hex -> rgb mỗi lần spawn; applySparkleEffects() cập nhật khi settings tải xong.
+let cursorParticleRgb = '124,92,255';
+let pageParticleRgb = '255,92,154';
+
+function applySparkleEffects() {
+  cursorParticleRgb = hexToRgbTriplet(siteSettings.sparkleCursorColor) || '124,92,255';
+  pageParticleRgb = hexToRgbTriplet(siteSettings.sparklePageColor) || '255,92,154';
+}
+
+// Đổi mã hex thành chuỗi "r,g,b" (không kèm độ mờ) để ghép vào rgba() lúc vẽ particle
+function hexToRgbTriplet(hex) {
+  if (!hex) return null;
+  let h = String(hex).replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length !== 6) return null;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `${r},${g},${b}`;
+}
+
 window.addEventListener('pointermove', (e) => {
-  spawnParticle(e.clientX, e.clientY);
+  spawnParticle(e.clientX, e.clientY, cursorParticleRgb);
 });
 
 function loop() {
@@ -822,7 +845,7 @@ loop();
 
 // Ambient particles nhẹ khi chưa di chuột (chạy dù chưa vào trang để nền không tĩnh)
 setInterval(() => {
-  spawnParticle(Math.random() * w, Math.random() * h);
+  spawnParticle(Math.random() * w, Math.random() * h, pageParticleRgb);
 }, 300);
 
 // Nếu đang ở chế độ chỉnh vị trí trong iframe admin, vào thẳng trang luôn (khỏi phải bấm "nhấn để vào trang")
