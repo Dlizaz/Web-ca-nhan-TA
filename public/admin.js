@@ -78,10 +78,8 @@ async function loadSettings() {
   avatarPreview.src = settings.avatar || '';
   avatarPreview.style.visibility = settings.avatar ? 'visible' : 'hidden';
 
-  // ---- Nền trang ----
-  const backgroundPreview = document.getElementById('background-preview');
-  backgroundPreview.src = settings.background || '';
-  backgroundPreview.style.visibility = settings.background ? 'visible' : 'hidden';
+  // ---- Nền trang (ảnh hoặc video, tự nhận diện theo đuôi file) ----
+  renderBackgroundPreview(settings.background || '');
   document.getElementById('field-backgroundColor').value = settings.backgroundColor || '#07070b';
   const overlayVal = settings.overlayOpacity ?? 45;
   document.getElementById('field-overlayOpacity').value = overlayVal;
@@ -450,11 +448,28 @@ document.getElementById('upload-avatar').addEventListener('click', () => {
 
 document.getElementById('upload-background').addEventListener('click', () => {
   uploadFile('background', document.getElementById('background-input'), 'status-background', (url) => {
-    const el = document.getElementById('background-preview');
-    el.src = url;
-    el.style.visibility = 'visible';
+    renderBackgroundPreview(url);
   });
 });
+
+// Hiện đúng ô xem trước (ảnh hoặc video) tuỳ theo đuôi file nền
+function renderBackgroundPreview(url) {
+  const img = document.getElementById('background-preview');
+  const video = document.getElementById('background-preview-video');
+  const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url || '');
+  if (isVideo) {
+    img.hidden = true;
+    img.style.visibility = 'hidden';
+    video.src = url;
+    video.hidden = false;
+  } else {
+    video.hidden = true;
+    video.removeAttribute('src');
+    img.hidden = false;
+    img.src = url || '';
+    img.style.visibility = url ? 'visible' : 'hidden';
+  }
+}
 
 document.getElementById('upload-cursor').addEventListener('click', async () => {
   const inputEl = document.getElementById('cursor-input');
@@ -515,6 +530,17 @@ window.addEventListener('message', (e) => {
     }
   }
 });
+
+// ---- Nút căn trái / căn giữa / căn phải: gửi lệnh vào iframe, áp cho khối đang được chọn ----
+function sendAlign(align) {
+  const iframe = document.getElementById('position-iframe');
+  if (iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'milky-align', align }, '*');
+  }
+}
+document.getElementById('align-left').addEventListener('click', () => sendAlign('left'));
+document.getElementById('align-center').addEventListener('click', () => sendAlign('center'));
+document.getElementById('align-right').addEventListener('click', () => sendAlign('right'));
 
 document.getElementById('save-positions').addEventListener('click', async () => {
   const statusEl = document.getElementById('status-positions');
