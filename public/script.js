@@ -76,6 +76,9 @@ async function loadSiteSettings() {
   applyMusic();
   applyPositions();
   applySizesAndColors();
+  // Lúc này #stage còn ẩn (display:none) nên đo kích thước sẽ ra 0 — gọi lại lần nữa
+  // trong enterSite() sau khi trang thật sự hiển thị mới có tác dụng.
+  requestAnimationFrame(clampPositionsToViewport);
 }
 
 // ---------- Font chữ: gom hết tên font đang được dùng ở mọi nơi (font chung, font riêng
@@ -279,6 +282,15 @@ function setDiscordMessage(text) {
   });
 }
 
+// Tính lại tốc độ chạy chữ dòng trạng thái Discord sau khi #stage đã hiển thị thật sự.
+// Cần thiết vì lần tính đầu tiên (lúc trang vừa load) diễn ra trong khi #stage vẫn còn
+// display:none (chưa bấm "nhấn để vào trang"), nên clientWidth/scrollWidth đều = 0 và
+// tốc độ đã lưu bị bỏ qua, luôn rơi về thời lượng tối thiểu mặc định.
+function refreshDiscordMarquee() {
+  const inner = document.getElementById('discord-message-inner');
+  if (inner && inner.textContent.trim()) setDiscordMessage(inner.textContent);
+}
+
 // Khung avatar (avatar decoration): 'manual' = ảnh admin tự upload, 'live' = lấy thật
 // từ Discord (được cập nhật trong fetchLanyard bên dưới khi bật chế độ Discord Live).
 function applyAvatarFrame() {
@@ -421,6 +433,30 @@ function applyPositions() {
     }
   });
 }
+
+// Vị trí % + kích thước cố định (px) do admin chỉnh trên desktop có thể khiến khối
+// (đặc biệt khung Discord/nhạc) tràn ra ngoài mép màn hình trên điện thoại (viewport hẹp
+// hơn nhiều) — ảnh bìa/nút bấm nằm ngoài vùng nhìn thấy nên không hiện, không bấm được.
+// Hàm này chỉ "kéo" khối vào lại bằng 1 offset hiển thị (--el-shift-x), không đụng tới
+// top/left admin đã lưu, nên không ảnh hưởng tới việc chỉnh vị trí ở trang admin.
+function clampPositionsToViewport() {
+  const margin = 8; // px cách mép màn hình
+  document.querySelectorAll('.pos-el').forEach((el) => {
+    if (el.classList.contains('dragging')) return; // đang kéo-thả trong admin thì để yên
+    el.style.setProperty('--el-shift-x', '0px'); // reset trước khi đo lại
+    const rect = el.getBoundingClientRect();
+    let shift = 0;
+    if (rect.left < margin) shift = margin - rect.left;
+    else if (rect.right > window.innerWidth - margin) shift = (window.innerWidth - margin) - rect.right;
+    if (shift) el.style.setProperty('--el-shift-x', `${shift.toFixed(1)}px`);
+  });
+}
+
+let clampResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(clampResizeTimer);
+  clampResizeTimer = setTimeout(clampPositionsToViewport, 120);
+});
 
 // ---------- Kích thước & màu khung tự chỉnh ----------
 const SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
@@ -633,7 +669,11 @@ async function enterSite() {
   await settingsReady;
   overlay.classList.add('fade-out');
   stage.classList.remove('hidden');
-  requestAnimationFrame(() => stage.classList.add('visible'));
+  requestAnimationFrame(() => {
+    stage.classList.add('visible');
+    refreshDiscordMarquee();
+    clampPositionsToViewport();
+  });
 
   audio.volume = 0.4;
   audio.play().then(() => {
