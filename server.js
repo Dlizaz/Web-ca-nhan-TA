@@ -34,13 +34,15 @@ function requireAuth(req, res, next) {
 // ---------- Upload config (lưu vào bộ nhớ tạm, rồi đẩy qua store.saveUpload) ----------
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB (nền dạng video cần nhỉnh hơn 1 chút)
   fileFilter: (req, file, cb) => {
     const kind = req.uploadKind;
     const okImage = /image\/(png|jpe?g|webp|gif|x-icon|vnd\.microsoft\.icon)/.test(file.mimetype);
     const okAudio = /audio\/(mpeg|mp3|wav|ogg)/.test(file.mimetype) || file.originalname.endsWith('.mp3');
+    const okVideo = /video\/(mp4|webm|quicktime)/.test(file.mimetype) || /\.(mp4|webm|mov)$/i.test(file.originalname);
     if (kind === 'song' && !okAudio) return cb(new Error('File nhạc phải là audio (mp3/wav/ogg)'));
-    if (kind !== 'song' && !okImage) return cb(new Error('File phải là ảnh (png/jpg/webp/gif)'));
+    if (kind === 'background' && !okImage && !okVideo) return cb(new Error('Ảnh nền phải là ảnh (png/jpg/webp/gif) hoặc video (mp4/webm)'));
+    if (kind !== 'song' && kind !== 'background' && !okImage) return cb(new Error('File phải là ảnh (png/jpg/webp/gif)'));
     cb(null, true);
   },
 });
