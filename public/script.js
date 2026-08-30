@@ -268,7 +268,7 @@ function setDiscordMessage(text) {
   if (!inner.textContent.trim()) return;
 
   requestAnimationFrame(() => {
-    const PX_PER_SEC = 18;
+    const PX_PER_SEC = 5;
     const distance = wrap.clientWidth + inner.scrollWidth;
     const duration = Math.max(3.5, distance / PX_PER_SEC);
     wrap.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
