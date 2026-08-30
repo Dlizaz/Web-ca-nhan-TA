@@ -7,6 +7,7 @@
   --accent-icon: #7c5cff;
   --accent-cursor: #7c5cff;
   --accent-2: #ff5c9a;
+  --accent-sparkle: #ff5c9a; /* màu riêng cho kim tuyến quanh tên, JS ghi đè từ usernameSparkleColor */
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --overlay-opacity: 0.45;
