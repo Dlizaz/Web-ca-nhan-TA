@@ -90,6 +90,7 @@ async function loadSettings() {
   // ---- Màu chữ & font ----
   document.getElementById('field-textColor').value = settings.textColor || '#eaeaf2';
   document.getElementById('field-accentColor').value = settings.accentColor || '#7c5cff';
+  document.getElementById('field-mutedColor').value = settings.mutedColor || '#b7b7c6';
   const fontSelect = document.getElementById('field-fontFamily');
   const customFontInput = document.getElementById('field-customFontFamily');
   const knownFont = Array.from(fontSelect.options).some((o) => o.value === settings.fontFamily);
@@ -256,7 +257,7 @@ function addLinkRow(link = { label: '', url: '', icon: 'link' }) {
       ${ICONS.map((i) => `<option value="${i}" ${i === link.icon ? 'selected' : ''}>${i}</option>`).join('')}
     </select>
     <input type="text" class="label-input" maxlength="30" placeholder="Tên nút" value="${escapeHtml(link.label || '')}" />
-    <input type="text" class="url-input" maxlength="300" placeholder="https://..." value="${escapeHtml(link.url || '')}" style="flex:2" />
+    <input type="text" class="url-input" maxlength="300" placeholder="https://..." value="${escapeHtml(link.url || '')}" />
     <button type="button" class="remove-btn" title="xóa">✕</button>
   `;
   row.querySelector('.remove-btn').addEventListener('click', () => row.remove());
@@ -315,10 +316,11 @@ document.getElementById('save-appearance-bg').addEventListener('click', () => {
 document.getElementById('save-appearance-text').addEventListener('click', () => {
   const textColor = document.getElementById('field-textColor').value;
   const accentColor = document.getElementById('field-accentColor').value;
+  const mutedColor = document.getElementById('field-mutedColor').value;
   const fontSelectValue = document.getElementById('field-fontFamily').value;
   const customFontFamily = document.getElementById('field-customFontFamily').value.trim();
   const fontFamily = fontSelectValue === 'custom' && customFontFamily ? 'custom' : fontSelectValue;
-  saveSettings({ fontFamily, customFontFamily }, 'status-appearance-text');
+  saveSettings({ textColor, accentColor, mutedColor, fontFamily, customFontFamily }, 'status-appearance-text');
 });
 
 // ---------- Widget Discord ----------
