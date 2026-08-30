@@ -111,7 +111,6 @@ async function loadSettings() {
   document.getElementById('field-accentBorderColor').value = settings.accentBorderColor || legacyAccent;
   document.getElementById('field-accentIconColor').value = settings.accentIconColor || legacyAccent;
   document.getElementById('field-accentCursorColor').value = settings.accentCursorColor || legacyAccent;
-  document.getElementById('field-usernameSparkleColor').value = settings.usernameSparkleColor || '#ff5c9a';
   document.getElementById('field-mutedColor').value = settings.mutedColor || '#b7b7c6';
   const fontSelect = document.getElementById('field-fontFamily');
   const customFontInput = document.getElementById('field-customFontFamily');
@@ -187,6 +186,11 @@ async function loadSettings() {
   const glowVal = settings.glowIntensity ?? 0;
   document.getElementById('field-glowIntensity').value = glowVal;
   document.getElementById('glowIntensity-value').textContent = glowVal;
+
+  // ---- Hiệu ứng kim tuyến: 3 loại riêng biệt (con trỏ / tên / cả trang) ----
+  document.getElementById('field-sparkleCursorColor').value = settings.sparkleCursorColor || '#7c5cff';
+  document.getElementById('field-usernameSparkleColor').value = settings.usernameSparkleColor || '#ff5c9a';
+  document.getElementById('field-sparklePageColor').value = settings.sparklePageColor || '#ff5c9a';
 
   // ---- Font & cỡ chữ riêng từng phần ----
   fillTextStyleFields(settings.textStyles || {});
@@ -460,13 +464,12 @@ document.getElementById('save-appearance-text').addEventListener('click', () => 
   const accentBorderColor = document.getElementById('field-accentBorderColor').value;
   const accentIconColor = document.getElementById('field-accentIconColor').value;
   const accentCursorColor = document.getElementById('field-accentCursorColor').value;
-  const usernameSparkleColor = document.getElementById('field-usernameSparkleColor').value;
   const mutedColor = document.getElementById('field-mutedColor').value;
   const fontSelectValue = document.getElementById('field-fontFamily').value;
   const customFontFamily = document.getElementById('field-customFontFamily').value.trim();
   const fontFamily = fontSelectValue === 'custom' && customFontFamily ? 'custom' : fontSelectValue;
   saveSettings({
-    textColor, accentBorderColor, accentIconColor, accentCursorColor, usernameSparkleColor,
+    textColor, accentBorderColor, accentIconColor, accentCursorColor,
     mutedColor, fontFamily, customFontFamily,
   }, 'status-appearance-text');
 });
@@ -476,6 +479,14 @@ document.getElementById('save-glow').addEventListener('click', () => {
   const glowColor = document.getElementById('field-glowColor').value;
   const glowIntensity = Number(document.getElementById('field-glowIntensity').value);
   saveSettings({ glowColor, glowIntensity }, 'status-glow');
+});
+
+// ---------- Hiệu ứng kim tuyến: 3 loại riêng biệt (con trỏ / tên / cả trang) ----------
+document.getElementById('save-sparkle').addEventListener('click', () => {
+  const sparkleCursorColor = document.getElementById('field-sparkleCursorColor').value;
+  const usernameSparkleColor = document.getElementById('field-usernameSparkleColor').value;
+  const sparklePageColor = document.getElementById('field-sparklePageColor').value;
+  saveSettings({ sparkleCursorColor, usernameSparkleColor, sparklePageColor }, 'status-sparkle');
 });
 
 // ---------- Font & cỡ chữ riêng từng phần ----------
