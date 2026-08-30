@@ -83,6 +83,9 @@
       <label>Màu con trỏ nhấp nháy (sau tiểu sử)</label>
       <input type="color" id="field-accentCursorColor" />
 
+      <label>Màu kim tuyến quanh tên (riêng, không lẫn với màu icon)</label>
+      <input type="color" id="field-usernameSparkleColor" />
+
       <label>Màu chữ phụ (tiểu sử, lượt xem, giờ nhạc, dòng phụ Discord...)</label>
       <input type="color" id="field-mutedColor" />
 
@@ -157,6 +160,11 @@
         </select>
         <label>Dòng chữ nhỏ (đang làm gì / lời nhắn)</label>
         <input type="text" id="field-discordManualMessage" maxlength="140" />
+
+        <label>Tốc độ chạy chữ dòng trạng thái: <span id="discordMarqueeSpeed-value">18</span> px/giây</label>
+        <input type="range" id="field-discordMarqueeSpeed" min="2" max="60" step="1" />
+        <p class="hint">Số càng lớn chữ chạy càng nhanh. Áp dụng cho cả hai chế độ manual và live.</p>
+
         <label>Ảnh avatar Discord hiện trong widget</label>
         <img id="discord-avatar-preview" class="avatar-preview small" alt="" />
         <input type="file" id="discord-avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
