@@ -111,6 +111,7 @@ async function loadSettings() {
   document.getElementById('field-accentBorderColor').value = settings.accentBorderColor || legacyAccent;
   document.getElementById('field-accentIconColor').value = settings.accentIconColor || legacyAccent;
   document.getElementById('field-accentCursorColor').value = settings.accentCursorColor || legacyAccent;
+  document.getElementById('field-usernameSparkleColor').value = settings.usernameSparkleColor || '#ff5c9a';
   document.getElementById('field-mutedColor').value = settings.mutedColor || '#b7b7c6';
   const fontSelect = document.getElementById('field-fontFamily');
   const customFontInput = document.getElementById('field-customFontFamily');
@@ -137,6 +138,9 @@ async function loadSettings() {
   document.getElementById('field-discordManualTag').value = settings.discordManualTag || '';
   document.getElementById('field-discordManualStatus').value = settings.discordManualStatus || 'online';
   document.getElementById('field-discordManualMessage').value = settings.discordManualMessage || '';
+  const marqueeVal = settings.discordMarqueeSpeed ?? 18;
+  document.getElementById('field-discordMarqueeSpeed').value = marqueeVal;
+  document.getElementById('discordMarqueeSpeed-value').textContent = marqueeVal;
   document.getElementById('field-discordId').value = settings.discordId || '';
   const discordAvatarPreview = document.getElementById('discord-avatar-preview');
   discordAvatarPreview.src = settings.discordManualAvatar || '';
@@ -303,6 +307,7 @@ wireRangeDisplay('field-musicBorderOpacity', 'musicBorderOpacity-value');
 wireRangeDisplay('field-linksBgOpacity', 'linksBgOpacity-value');
 wireRangeDisplay('field-linksBorderOpacity', 'linksBorderOpacity-value');
 wireRangeDisplay('field-glowIntensity', 'glowIntensity-value');
+wireRangeDisplay('field-discordMarqueeSpeed', 'discordMarqueeSpeed-value');
 
 // ---------- Helper lưu settings ----------
 async function saveSettings(patch, statusElId) {
@@ -455,12 +460,13 @@ document.getElementById('save-appearance-text').addEventListener('click', () => 
   const accentBorderColor = document.getElementById('field-accentBorderColor').value;
   const accentIconColor = document.getElementById('field-accentIconColor').value;
   const accentCursorColor = document.getElementById('field-accentCursorColor').value;
+  const usernameSparkleColor = document.getElementById('field-usernameSparkleColor').value;
   const mutedColor = document.getElementById('field-mutedColor').value;
   const fontSelectValue = document.getElementById('field-fontFamily').value;
   const customFontFamily = document.getElementById('field-customFontFamily').value.trim();
   const fontFamily = fontSelectValue === 'custom' && customFontFamily ? 'custom' : fontSelectValue;
   saveSettings({
-    textColor, accentBorderColor, accentIconColor, accentCursorColor,
+    textColor, accentBorderColor, accentIconColor, accentCursorColor, usernameSparkleColor,
     mutedColor, fontFamily, customFontFamily,
   }, 'status-appearance-text');
 });
@@ -495,6 +501,7 @@ document.getElementById('save-discord').addEventListener('click', () => {
     discordManualTag: document.getElementById('field-discordManualTag').value,
     discordManualStatus: document.getElementById('field-discordManualStatus').value,
     discordManualMessage: document.getElementById('field-discordManualMessage').value,
+    discordMarqueeSpeed: Number(document.getElementById('field-discordMarqueeSpeed').value),
   };
   saveSettings(patch, 'status-discord');
 });
