@@ -115,6 +115,9 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.accentCursorColor === 'string' && HEX_RE.test(b.accentCursorColor)) patch.accentCursorColor = b.accentCursorColor;
     // Màu riêng cho kim tuyến quanh tên (tách khỏi accentIconColor để không bị lẫn 2 màu)
     if (typeof b.usernameSparkleColor === 'string' && HEX_RE.test(b.usernameSparkleColor)) patch.usernameSparkleColor = b.usernameSparkleColor;
+    // 2 loại kim tuyến còn lại: theo con trỏ chuột, và rải khắp trang (ambient)
+    if (typeof b.sparkleCursorColor === 'string' && HEX_RE.test(b.sparkleCursorColor)) patch.sparkleCursorColor = b.sparkleCursorColor;
+    if (typeof b.sparklePageColor === 'string' && HEX_RE.test(b.sparklePageColor)) patch.sparklePageColor = b.sparklePageColor;
     if (b.overlayOpacity !== undefined) {
       const n = Number(b.overlayOpacity);
       if (!Number.isNaN(n)) patch.overlayOpacity = Math.min(90, Math.max(0, n));
