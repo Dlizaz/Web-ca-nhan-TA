@@ -43,6 +43,16 @@ body.has-custom-cursor * {
   background-repeat: no-repeat;
 }
 
+/* Nền dạng video (mp4/webm) — nhẹ và ít tốn RAM hơn gif rất nhiều, đặc biệt trên mobile */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 #bg-overlay {
   position: fixed;
   inset: 0;
@@ -113,12 +123,15 @@ body.has-custom-cursor * {
 
 #stage.visible { opacity: 1; }
 
-/* Mỗi khối định vị tự do: top/left tính bằng % viewport, neo ở tâm phần tử */
+/* Mỗi khối định vị tự do: top/left tính bằng % viewport, neo ở tâm phần tử.
+   --el-scale-cap giới hạn mức phóng to tối đa: mặc định rất cao (không chặn desktop),
+   nhưng bị hạ thấp xuống ở media query mobile bên dưới để tránh phóng to vượt màn hình. */
 .pos-el {
   position: fixed;
   top: 10%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(var(--el-scale, 1));
+  --el-scale-cap: 3;
+  transform: translate(-50%, -50%) scale(min(var(--el-scale, 1), var(--el-scale-cap, 3)));
   text-align: center;
   transition: top 0.15s ease, left 0.15s ease;
 }
@@ -135,6 +148,12 @@ body.edit-positions .pos-el {
   outline-offset: 6px;
   border-radius: 10px;
   cursor: grab;
+}
+
+/* Khối đang được chọn (để bấm nút căn trái/giữa/phải từ trang admin) */
+body.edit-positions .pos-el.selected-el {
+  outline: 2px solid var(--accent-2, #ff5c9a);
+  outline-offset: 6px;
 }
 
 /* Tay cầm kéo để đổi kích thước (chỉ hiện trong chế độ chỉnh vị trí ở trang admin) */
@@ -361,7 +380,7 @@ body.edit-positions .pos-el .resize-handle {
   display: inline-block;
 }
 
-/* Khi dòng chữ dài hơn khung, JS thêm class "marquee" để chạy chữ liên tục từ đầu tới cuối */
+/* Dòng trạng thái Discord luôn tự chạy chữ (marquee) liên tục từ đầu tới cuối, do JS thêm class "marquee" */
 .discord-message.marquee .discord-message-inner {
   padding-left: 100%;
   animation: discord-marquee linear infinite;
@@ -532,5 +551,11 @@ body.edit-positions .pos-el .resize-handle {
 }
 
 @media (max-width: 640px) {
-  .discord-box, .music-box { max-width: 88vw; }
+  /* Cách B: ép trần kích thước trên điện thoại, bất kể admin đã set to cỡ nào trên desktop.
+     Dùng !important vì JS chỉnh width/max-width trực tiếp qua inline style (specificity cao). */
+  .pos-el { --el-scale-cap: 1.35; }
+  .discord-box, .music-box {
+    width: auto !important;
+    max-width: 88vw !important;
+  }
 }
