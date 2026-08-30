@@ -16,6 +16,11 @@ const ALLOWED_POSITION_KEYS = ['avatar', 'username', 'bio', 'views', 'discord', 
 const ALLOWED_SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
 const ALLOWED_BOX_KEYS = ['discord', 'music'];
 const ALLOWED_BOXSTYLE_KEYS = ['discord', 'music', 'links'];
+// Khớp với TEXT_STYLE_KEYS trong script.js / TEXT_STYLE_FIELDS trong admin.js
+const ALLOWED_TEXTSTYLE_KEYS = [
+  'username', 'bio', 'views', 'discordName', 'discordTag',
+  'discordMessage', 'musicTitle', 'musicTime', 'links',
+];
 const HEX_RE = /^#[0-9a-fA-F]{3,8}$/;
 
 app.use(express.json());
@@ -176,7 +181,8 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     let current = null;
     const needCurrent = (b.positions && typeof b.positions === 'object')
       || (b.sizes && typeof b.sizes === 'object')
-      || (b.boxStyles && typeof b.boxStyles === 'object');
+      || (b.boxStyles && typeof b.boxStyles === 'object')
+      || (b.textStyles && typeof b.textStyles === 'object');
     if (needCurrent) current = await store.getSettings();
 
     // ----- Vị trí tự do (merge nông theo từng khối để không mất phần chưa gửi) -----
@@ -247,6 +253,29 @@ app.post('/api/settings', requireAuth, async (req, res) => {
       }
       if (Object.keys(boxPatch).length) {
         patch.boxStyles = { ...(current.boxStyles || {}), ...boxPatch };
+      }
+    }
+
+    // ----- Font & cỡ chữ riêng từng phần (trước đây bị thiếu ở đây nên không lưu được) -----
+    if (b.textStyles && typeof b.textStyles === 'object') {
+      const tsPatch = {};
+      for (const key of ALLOWED_TEXTSTYLE_KEYS) {
+        const s = b.textStyles[key];
+        if (s && typeof s === 'object') {
+          const entry = {};
+          if (typeof s.font === 'string') entry.font = s.font.slice(0, 60);
+          if (typeof s.customFont === 'string') entry.customFont = s.customFont.slice(0, 60);
+          if (s.size !== undefined) {
+            const n = Number(s.size);
+            if (!Number.isNaN(n)) entry.size = Math.min(72, Math.max(6, Math.round(n)));
+          }
+          if (Object.keys(entry).length) {
+            tsPatch[key] = { ...((current.textStyles || {})[key] || {}), ...entry };
+          }
+        }
+      }
+      if (Object.keys(tsPatch).length) {
+        patch.textStyles = { ...(current.textStyles || {}), ...tsPatch };
       }
     }
 
