@@ -109,12 +109,25 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.backgroundColor === 'string' && HEX_RE.test(b.backgroundColor)) patch.backgroundColor = b.backgroundColor;
     if (typeof b.textColor === 'string' && HEX_RE.test(b.textColor)) patch.textColor = b.textColor;
     if (typeof b.accentColor === 'string' && HEX_RE.test(b.accentColor)) patch.accentColor = b.accentColor;
+    // Màu nhấn tách riêng 3 chỗ: viền / icon / con trỏ nhấp nháy (trước đây bị thiếu ở đây nên không lưu được)
+    if (typeof b.accentBorderColor === 'string' && HEX_RE.test(b.accentBorderColor)) patch.accentBorderColor = b.accentBorderColor;
+    if (typeof b.accentIconColor === 'string' && HEX_RE.test(b.accentIconColor)) patch.accentIconColor = b.accentIconColor;
+    if (typeof b.accentCursorColor === 'string' && HEX_RE.test(b.accentCursorColor)) patch.accentCursorColor = b.accentCursorColor;
+    // Màu riêng cho kim tuyến quanh tên (tách khỏi accentIconColor để không bị lẫn 2 màu)
+    if (typeof b.usernameSparkleColor === 'string' && HEX_RE.test(b.usernameSparkleColor)) patch.usernameSparkleColor = b.usernameSparkleColor;
     if (b.overlayOpacity !== undefined) {
       const n = Number(b.overlayOpacity);
       if (!Number.isNaN(n)) patch.overlayOpacity = Math.min(90, Math.max(0, n));
     }
     if (typeof b.fontFamily === 'string') patch.fontFamily = b.fontFamily.slice(0, 60);
     if (typeof b.customFontFamily === 'string') patch.customFontFamily = b.customFontFamily.slice(0, 60);
+
+    // ----- Hiệu ứng phát sáng chữ & icon (trước đây bị thiếu ở đây nên không lưu được) -----
+    if (typeof b.glowColor === 'string' && HEX_RE.test(b.glowColor)) patch.glowColor = b.glowColor;
+    if (b.glowIntensity !== undefined) {
+      const n = Number(b.glowIntensity);
+      if (!Number.isNaN(n)) patch.glowIntensity = Math.min(100, Math.max(0, n));
+    }
 
     // ----- Discord -----
     if (typeof b.discordEnabled === 'boolean') patch.discordEnabled = b.discordEnabled;
@@ -124,6 +137,10 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.discordManualTag === 'string') patch.discordManualTag = b.discordManualTag.slice(0, 40);
     if (['online', 'idle', 'dnd', 'offline'].includes(b.discordManualStatus)) patch.discordManualStatus = b.discordManualStatus;
     if (typeof b.discordManualMessage === 'string') patch.discordManualMessage = b.discordManualMessage.slice(0, 140);
+    if (b.discordMarqueeSpeed !== undefined) {
+      const n = Number(b.discordMarqueeSpeed);
+      if (!Number.isNaN(n)) patch.discordMarqueeSpeed = Math.min(60, Math.max(2, n));
+    }
 
     // ----- Khung ảnh đại diện (avatar decoration) -----
     if (typeof b.avatarFrameEnabled === 'boolean') patch.avatarFrameEnabled = b.avatarFrameEnabled;
