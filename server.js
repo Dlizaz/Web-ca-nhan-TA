@@ -140,6 +140,15 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.clickFont === 'string') patch.clickFont = b.clickFont.slice(0, 60);
     if (typeof b.clickColor === 'string' && HEX_RE.test(b.clickColor)) patch.clickColor = b.clickColor;
 
+    // ----- Màn hình "nhấn để vào trang" -----
+    if (typeof b.enterText === 'string') patch.enterText = b.enterText.slice(0, 80);
+    if (typeof b.enterFont === 'string') patch.enterFont = b.enterFont.slice(0, 60);
+    if (b.enterSize !== undefined) {
+      const n = Number(b.enterSize);
+      if (!Number.isNaN(n)) patch.enterSize = Math.min(60, Math.max(8, Math.round(n)));
+    }
+    if (typeof b.enterColor === 'string' && (b.enterColor === '' || HEX_RE.test(b.enterColor))) patch.enterColor = b.enterColor;
+
     // ----- Màu chữ phụ (nhãn phụ / mô tả / giờ nhạc...) -----
     if (typeof b.mutedColor === 'string' && HEX_RE.test(b.mutedColor)) patch.mutedColor = b.mutedColor;
 
