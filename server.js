@@ -13,6 +13,9 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-doi-di-nha';
 const ALLOWED_ICONS = ['discord', 'instagram', 'tiktok', 'youtube', 'twitter', 'github', 'spotify', 'link'];
 const ALLOWED_UPLOAD_KINDS = ['avatar', 'song', 'background', 'cursor', 'songCover', 'discordManualAvatar'];
 const ALLOWED_POSITION_KEYS = ['avatar', 'username', 'bio', 'views', 'discord', 'links', 'music'];
+const ALLOWED_SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
+const ALLOWED_BOX_KEYS = ['discord', 'music'];
+const ALLOWED_BOXSTYLE_KEYS = ['discord', 'music', 'links'];
 const HEX_RE = /^#[0-9a-fA-F]{3,8}$/;
 
 app.use(express.json());
@@ -131,6 +134,16 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.clickFont === 'string') patch.clickFont = b.clickFont.slice(0, 60);
     if (typeof b.clickColor === 'string' && HEX_RE.test(b.clickColor)) patch.clickColor = b.clickColor;
 
+    // ----- Màu chữ phụ (nhãn phụ / mô tả / giờ nhạc...) -----
+    if (typeof b.mutedColor === 'string' && HEX_RE.test(b.mutedColor)) patch.mutedColor = b.mutedColor;
+
+    // cần current settings nếu có patch merge nông (positions / sizes / boxStyles)
+    let current = null;
+    const needCurrent = (b.positions && typeof b.positions === 'object')
+      || (b.sizes && typeof b.sizes === 'object')
+      || (b.boxStyles && typeof b.boxStyles === 'object');
+    if (needCurrent) current = await store.getSettings();
+
     // ----- Vị trí tự do (merge nông theo từng khối để không mất phần chưa gửi) -----
     if (b.positions && typeof b.positions === 'object') {
       const posPatch = {};
@@ -145,8 +158,60 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         }
       }
       if (Object.keys(posPatch).length) {
-        const current = await store.getSettings();
         patch.positions = { ...(current.positions || {}), ...posPatch };
+      }
+    }
+
+    // ----- Kích thước từng khối (merge nông theo từng khối) -----
+    if (b.sizes && typeof b.sizes === 'object') {
+      const sizePatch = {};
+      for (const key of ALLOWED_SCALE_KEYS) {
+        const s = b.sizes[key];
+        if (s && typeof s === 'object' && s.scale !== undefined) {
+          const scale = Number(s.scale);
+          if (!Number.isNaN(scale)) sizePatch[key] = { scale: Math.min(3, Math.max(0.4, scale)) };
+        }
+      }
+      for (const key of ALLOWED_BOX_KEYS) {
+        const s = b.sizes[key];
+        if (s && typeof s === 'object') {
+          const width = Number(s.width);
+          const height = Number(s.height);
+          const entry = {};
+          if (!Number.isNaN(width) && s.width !== undefined) entry.width = Math.min(1000, Math.max(120, width));
+          if (!Number.isNaN(height) && s.height !== undefined) entry.height = Math.min(1000, Math.max(0, height));
+          if (Object.keys(entry).length) sizePatch[key] = entry;
+        }
+      }
+      if (Object.keys(sizePatch).length) {
+        patch.sizes = { ...(current.sizes || {}), ...sizePatch };
+      }
+    }
+
+    // ----- Màu nền / viền khung Discord, khung nhạc, nút link -----
+    if (b.boxStyles && typeof b.boxStyles === 'object') {
+      const boxPatch = {};
+      for (const key of ALLOWED_BOXSTYLE_KEYS) {
+        const s = b.boxStyles[key];
+        if (s && typeof s === 'object') {
+          const entry = {};
+          if (typeof s.bg === 'string' && HEX_RE.test(s.bg)) entry.bg = s.bg;
+          if (typeof s.border === 'string' && HEX_RE.test(s.border)) entry.border = s.border;
+          if (s.bgOpacity !== undefined) {
+            const n = Number(s.bgOpacity);
+            if (!Number.isNaN(n)) entry.bgOpacity = Math.min(100, Math.max(0, n));
+          }
+          if (s.borderOpacity !== undefined) {
+            const n = Number(s.borderOpacity);
+            if (!Number.isNaN(n)) entry.borderOpacity = Math.min(100, Math.max(0, n));
+          }
+          if (Object.keys(entry).length) {
+            boxPatch[key] = { ...((current.boxStyles || {})[key] || {}), ...entry };
+          }
+        }
+      }
+      if (Object.keys(boxPatch).length) {
+        patch.boxStyles = { ...(current.boxStyles || {}), ...boxPatch };
       }
     }
 
