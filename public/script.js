@@ -59,6 +59,8 @@ async function loadSiteSettings() {
   applyIdentity();
   applyAppearance();
   applyDiscord();
+  applyAvatarFrame();
+  refreshLanyardIfNeeded();
   applyLinks();
   applyMusic();
   applyPositions();
@@ -125,19 +127,8 @@ let lanyardTimer = null;
 
 function applyDiscord() {
   const box = document.getElementById('el-discord');
-  if (!siteSettings.discordEnabled) {
-    box.hidden = true;
-    if (lanyardTimer) clearInterval(lanyardTimer);
-    return;
-  }
-  box.hidden = false;
-
-  if (siteSettings.discordMode === 'live' && siteSettings.discordId) {
-    fetchLanyard();
-    if (lanyardTimer) clearInterval(lanyardTimer);
-    lanyardTimer = setInterval(fetchLanyard, LANYARD_POLL_MS);
-  } else {
-    if (lanyardTimer) clearInterval(lanyardTimer);
+  box.hidden = !siteSettings.discordEnabled;
+  if (siteSettings.discordEnabled && siteSettings.discordMode !== 'live') {
     renderDiscordManual();
   }
 }
@@ -146,37 +137,113 @@ function renderDiscordManual() {
   document.getElementById('discord-avatar').src = siteSettings.discordManualAvatar || '';
   document.getElementById('discord-name').textContent = siteSettings.discordManualName || 'discord';
   document.getElementById('discord-tag').textContent = siteSettings.discordManualTag ? `#${siteSettings.discordManualTag}` : '';
-  document.getElementById('discord-message').textContent = siteSettings.discordManualMessage || '';
+  setDiscordMessage(siteSettings.discordManualMessage || '');
   document.getElementById('discord-status-dot').dataset.status = siteSettings.discordManualStatus || 'online';
 }
 
+// Đặt chữ cho dòng trạng thái Discord; nếu chữ dài hơn khung thì tự chạy chữ (marquee)
+// từ đầu đến cuối liên tục, tốc độ tính theo độ dài chữ để luôn mượt như nhau.
+function setDiscordMessage(text) {
+  const wrap = document.getElementById('discord-message');
+  const inner = document.getElementById('discord-message-inner');
+  inner.textContent = text || '';
+  wrap.classList.remove('marquee');
+
+  requestAnimationFrame(() => {
+    const overflowing = inner.scrollWidth > wrap.clientWidth + 1;
+    if (overflowing) {
+      const PX_PER_SEC = 40;
+      const distance = wrap.clientWidth + inner.scrollWidth;
+      const duration = Math.max(4, distance / PX_PER_SEC);
+      wrap.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
+      wrap.classList.add('marquee');
+    }
+  });
+}
+
+// Khung avatar (avatar decoration): 'manual' = ảnh admin tự upload, 'live' = lấy thật
+// từ Discord (được cập nhật trong fetchLanyard bên dưới khi bật chế độ Discord Live).
+function applyAvatarFrame() {
+  const frameImg = document.getElementById('avatar-frame-img');
+  if (!siteSettings.avatarFrameEnabled) {
+    frameImg.hidden = true;
+    frameImg.src = '';
+    return;
+  }
+  if (siteSettings.avatarFrameMode === 'manual') {
+    if (siteSettings.avatarFrameManual) {
+      frameImg.src = siteSettings.avatarFrameManual;
+      frameImg.hidden = false;
+    } else {
+      frameImg.hidden = true;
+      frameImg.src = '';
+    }
+  }
+  // chế độ 'live' sẽ được fetchLanyard() cập nhật ảnh khung khi có dữ liệu
+}
+
+// Có cần gọi Lanyard API không: cần khi widget Discord ở chế độ live, HOẶC khung avatar
+// đang lấy trực tiếp từ Discord — cả hai dùng chung 1 lượt fetch/poll để đỡ tốn request.
+function refreshLanyardIfNeeded() {
+  if (lanyardTimer) { clearInterval(lanyardTimer); lanyardTimer = null; }
+  const discordLive = siteSettings.discordEnabled && siteSettings.discordMode === 'live' && siteSettings.discordId;
+  const frameLive = siteSettings.avatarFrameEnabled && siteSettings.avatarFrameMode === 'live' && siteSettings.discordId;
+  if (discordLive || frameLive) {
+    fetchLanyard();
+    lanyardTimer = setInterval(fetchLanyard, LANYARD_POLL_MS);
+  }
+}
+
 async function fetchLanyard() {
+  const discordLive = siteSettings.discordEnabled && siteSettings.discordMode === 'live' && siteSettings.discordId;
+  const frameLive = siteSettings.avatarFrameEnabled && siteSettings.avatarFrameMode === 'live' && siteSettings.discordId;
+  const discordId = siteSettings.discordId;
+
   try {
-    const res = await fetch(`https://api.lanyard.rest/v1/users/${siteSettings.discordId}`);
+    const res = await fetch(`https://api.lanyard.rest/v1/users/${discordId}`);
     const json = await res.json();
     if (!json.success) throw new Error('lanyard lỗi');
     const d = json.data;
     const u = d.discord_user;
-    const avatarUrl = u.avatar
-      ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64`
-      : `https://cdn.discordapp.com/embed/avatars/${Number(u.discriminator || 0) % 5}.png`;
 
-    document.getElementById('discord-avatar').src = avatarUrl;
-    document.getElementById('discord-name').textContent = u.global_name || u.username || 'discord';
-    document.getElementById('discord-tag').textContent = u.discriminator && u.discriminator !== '0' ? `#${u.discriminator}` : '';
+    if (discordLive) {
+      const avatarUrl = u.avatar
+        ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64`
+        : `https://cdn.discordapp.com/embed/avatars/${Number(u.discriminator || 0) % 5}.png`;
 
-    const activity = (d.activities || []).find((a) => a.type !== 4) || (d.activities || [])[0];
-    let msg = '';
-    if (activity) msg = activity.name || '';
-    else if (d.discord_status === 'online') msg = 'đang online';
-    else if (d.discord_status === 'idle') msg = 'đang away';
-    else if (d.discord_status === 'dnd') msg = 'không làm phiền';
-    else msg = 'offline';
-    document.getElementById('discord-message').textContent = msg;
-    document.getElementById('discord-status-dot').dataset.status = d.discord_status || 'offline';
+      document.getElementById('discord-avatar').src = avatarUrl;
+      document.getElementById('discord-name').textContent = u.global_name || u.username || 'discord';
+      document.getElementById('discord-tag').textContent = u.discriminator && u.discriminator !== '0' ? `#${u.discriminator}` : '';
+
+      const activity = (d.activities || []).find((a) => a.type !== 4) || (d.activities || [])[0];
+      let msg = '';
+      if (activity) msg = activity.name || '';
+      else if (d.discord_status === 'online') msg = 'đang online';
+      else if (d.discord_status === 'idle') msg = 'đang away';
+      else if (d.discord_status === 'dnd') msg = 'không làm phiền';
+      else msg = 'offline';
+      setDiscordMessage(msg);
+      document.getElementById('discord-status-dot').dataset.status = d.discord_status || 'offline';
+    }
+
+    if (frameLive) {
+      const frameImg = document.getElementById('avatar-frame-img');
+      const deco = u.avatar_decoration_data;
+      if (deco && deco.asset) {
+        frameImg.src = `https://cdn.discordapp.com/avatar-decoration-presets/${deco.asset}.png?size=240&passthrough=true`;
+        frameImg.hidden = false;
+      } else {
+        // tài khoản Discord hiện không gắn khung nào -> không hiện gì
+        frameImg.hidden = true;
+        frameImg.src = '';
+      }
+    }
   } catch (e) {
     // API lỗi hoặc user chưa join server Lanyard -> tạm hiện dữ liệu thủ công nếu có
-    renderDiscordManual();
+    if (discordLive) renderDiscordManual();
+    if (frameLive) {
+      document.getElementById('avatar-frame-img').hidden = true;
+    }
   }
 }
 
@@ -426,6 +493,29 @@ async function enterSite() {
   startViewCounter();
   setupClickBubble();
   setupPositionEditing();
+  initUsernameSparkles();
+}
+
+// ---------- Kim tuyến bơi lượn quanh tên ----------
+function initUsernameSparkles() {
+  const container = document.getElementById('username-sparkles');
+  if (!container || container.dataset.built) return;
+  container.dataset.built = '1';
+
+  const glyphs = ['✦', '✧', '★', '✩', '❋', '·'];
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span');
+    s.className = 'sparkle';
+    s.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+    s.style.left = `${Math.random() * 100}%`;
+    s.style.top = `${Math.random() * 100}%`;
+    s.style.color = i % 2 === 0 ? 'var(--accent)' : 'var(--accent-2)';
+    s.style.fontSize = `${8 + Math.random() * 6}px`;
+    s.style.animationDuration = `${(1.8 + Math.random() * 1.8).toFixed(2)}s`;
+    s.style.animationDelay = `${(Math.random() * 3).toFixed(2)}s`;
+    container.appendChild(s);
+  }
 }
 
 overlay.addEventListener('click', enterSite, { once: true });
