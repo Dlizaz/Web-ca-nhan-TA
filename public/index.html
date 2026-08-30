@@ -3,87 +3,268 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>milky</title>
-<meta name="theme-color" content="#0a0a0f" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>Quản trị trang cá nhân</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link id="dynamic-font-link" rel="stylesheet" href="" />
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="admin.css" />
 </head>
 <body>
 
-  <!-- Overlay bắt buộc click để bật nhạc (trình duyệt chặn autoplay) -->
-  <div id="enter-overlay">
-    <div class="enter-box">
-      <div class="enter-pulse"></div>
-      <p>nhấn để vào trang</p>
+<div id="login-screen" class="screen">
+  <form id="login-form" class="panel">
+    <h1>Đăng nhập quản trị</h1>
+    <input type="password" id="login-password" placeholder="Mật khẩu admin" autocomplete="current-password" required />
+    <button type="submit">Đăng nhập</button>
+    <p id="login-error" class="error"></p>
+  </form>
+</div>
+
+<div id="admin-screen" class="screen hidden">
+  <header class="top">
+    <h1>Quản trị trang cá nhân</h1>
+    <div class="top-actions">
+      <a href="/" target="_blank" class="btn ghost">Xem trang</a>
+      <button id="logout-btn" class="btn ghost">Đăng xuất</button>
     </div>
-  </div>
+  </header>
 
-  <!-- Lớp nền: ảnh/gif do admin upload + overlay tối để chữ dễ đọc -->
-  <div id="bg-layer"></div>
-  <div id="bg-overlay"></div>
+  <main class="grid">
 
-  <canvas id="fx-canvas"></canvas>
+    <section class="panel">
+      <h2>Thông tin cơ bản</h2>
+      <label>Tên hiển thị</label>
+      <input type="text" id="field-username" maxlength="40" />
 
-  <main id="stage" class="hidden">
+      <label>Tiểu sử (mỗi dòng sẽ tự động gõ chữ luân phiên)</label>
+      <div id="bio-lines"></div>
+      <button type="button" class="btn small" id="add-bio-line">+ thêm dòng</button>
 
-    <!-- Avatar -->
-    <div id="el-avatar" class="pos-el avatar-wrap">
-      <img id="avatar-img" src="" alt="avatar" class="avatar" onerror="this.style.display='none'" />
-      <span class="status-dot"></span>
-      <div id="click-bubble" class="click-bubble"></div>
-    </div>
+      <button type="button" class="btn primary" id="save-basic">Lưu thông tin</button>
+      <p class="status" id="status-basic"></p>
+    </section>
 
-    <!-- Tên -->
-    <h1 id="el-username" class="pos-el username"><span id="username-text">...</span><span class="badge" title="verified">✓</span></h1>
+    <section class="panel">
+      <h2>Ảnh đại diện</h2>
+      <img id="avatar-preview" class="avatar-preview" alt="avatar" />
+      <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn primary" id="upload-avatar">Tải ảnh lên</button>
+      <p class="status" id="status-avatar"></p>
+      <p class="hint">Bấm vào avatar ngoài trang sẽ hiện popup — chỉnh nội dung ở mục "Nội dung khi click" bên dưới.</p>
+    </section>
 
-    <!-- Tiểu sử gõ chữ -->
-    <p id="el-bio" class="pos-el bio-wrap"><span id="typed-bio" class="bio"></span></p>
+    <section class="panel">
+      <h2>Nền trang (ảnh / gif)</h2>
+      <img id="background-preview" class="background-preview" alt="nền" />
+      <input type="file" id="background-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn primary" id="upload-background">Tải ảnh nền lên</button>
+      <p class="status" id="status-background"></p>
 
-    <!-- Lượt xem -->
-    <div id="el-views" class="pos-el views">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
-      <span id="view-count">0</span> lượt xem
-    </div>
+      <label>Màu nền dự phòng (khi chưa có ảnh)</label>
+      <input type="color" id="field-backgroundColor" />
 
-    <!-- Widget Discord -->
-    <div id="el-discord" class="pos-el discord-box" hidden>
-      <img id="discord-avatar" class="discord-avatar" src="" alt="" />
-      <div class="discord-info">
-        <div class="discord-name-row">
-          <span id="discord-name"></span>
-          <span id="discord-tag"></span>
-        </div>
-        <div id="discord-message" class="discord-message"></div>
+      <label>Độ tối lớp phủ lên ảnh nền: <span id="overlay-value">45</span>%</label>
+      <input type="range" id="field-overlayOpacity" min="0" max="90" step="1" />
+
+      <button type="button" class="btn primary" id="save-appearance-bg">Lưu nền</button>
+      <p class="status" id="status-appearance-bg"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Màu chữ &amp; font chữ</h2>
+      <label>Màu chữ chính</label>
+      <input type="color" id="field-textColor" />
+
+      <label>Màu nhấn (viền / icon / con trỏ nhấp nháy)</label>
+      <input type="color" id="field-accentColor" />
+
+      <label>Màu chữ phụ (tiểu sử, lượt xem, giờ nhạc, dòng phụ Discord...)</label>
+      <input type="color" id="field-mutedColor" />
+
+      <label>Font chữ</label>
+      <select id="field-fontFamily">
+        <option value="Space Grotesk">Space Grotesk (mặc định)</option>
+        <option value="Inter">Inter</option>
+        <option value="Poppins">Poppins</option>
+        <option value="Quicksand">Quicksand</option>
+        <option value="Be Vietnam Pro">Be Vietnam Pro</option>
+        <option value="Nunito">Nunito</option>
+        <option value="Montserrat">Montserrat</option>
+        <option value="Comfortaa">Comfortaa</option>
+        <option value="Josefin Sans">Josefin Sans</option>
+        <option value="Playfair Display">Playfair Display</option>
+        <option value="Dancing Script">Dancing Script</option>
+        <option value="Pacifico">Pacifico</option>
+        <option value="custom">Tự nhập tên Google Font khác...</option>
+      </select>
+      <input type="text" id="field-customFontFamily" placeholder="ví dụ: Baloo 2" class="hidden" />
+
+      <button type="button" class="btn primary" id="save-appearance-text">Lưu màu chữ &amp; font</button>
+      <p class="status" id="status-appearance-text"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Con trỏ chuột tùy chỉnh</h2>
+      <img id="cursor-preview" class="cursor-preview" alt="con trỏ" />
+      <input type="file" id="cursor-input" accept="image/png,image/x-icon,.cur" />
+      <button type="button" class="btn primary" id="upload-cursor">Tải con trỏ lên</button>
+      <p class="status" id="status-cursor"></p>
+      <p class="hint">Ảnh sẽ được tự động thu nhỏ về 32×32px khi tải lên (con trỏ ảnh lớn sẽ bị trình duyệt bỏ qua). Nên chọn ảnh có nền trong suốt để không bị viền vuông.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Widget Discord</h2>
+      <label class="switch-row">
+        <input type="checkbox" id="field-discordEnabled" />
+        <span>Hiện widget Discord ngoài trang</span>
+      </label>
+
+      <label>Kiểu hiển thị</label>
+      <select id="field-discordMode">
+        <option value="manual">Tự viết nội dung</option>
+        <option value="live">Tự cập nhật trực tiếp từ Discord</option>
+      </select>
+
+      <div id="discord-manual-fields">
+        <label>Tên hiển thị</label>
+        <input type="text" id="field-discordManualName" maxlength="40" />
+        <label>Tag / số hiệu (không cần dấu #)</label>
+        <input type="text" id="field-discordManualTag" maxlength="40" />
+        <label>Trạng thái</label>
+        <select id="field-discordManualStatus">
+          <option value="online">Online</option>
+          <option value="idle">Away</option>
+          <option value="dnd">Không làm phiền</option>
+          <option value="offline">Offline</option>
+        </select>
+        <label>Dòng chữ nhỏ (đang làm gì / lời nhắn)</label>
+        <input type="text" id="field-discordManualMessage" maxlength="140" />
+        <label>Ảnh avatar Discord hiện trong widget</label>
+        <img id="discord-avatar-preview" class="avatar-preview small" alt="" />
+        <input type="file" id="discord-avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+        <button type="button" class="btn small" id="upload-discord-avatar">Tải ảnh</button>
       </div>
-      <span id="discord-status-dot" class="discord-status-dot"></span>
-    </div>
 
-    <!-- Danh sách link -->
-    <div id="el-links" class="pos-el links" data-links-container></div>
+      <div id="discord-live-fields" class="hidden">
+        <label>Discord User ID</label>
+        <input type="text" id="field-discordId" placeholder="ví dụ: 123456789012345678" />
+        <p class="hint">Chế độ này lấy dữ liệu trực tiếp qua Lanyard API (miễn phí, không cần bot).
+        Tài khoản Discord của bạn cần tham gia server Lanyard (discord.gg/lanyard) thì trạng thái mới cập nhật được.</p>
+      </div>
 
-    <!-- Trình phát nhạc -->
-    <div id="el-music" class="pos-el music-box" hidden>
-      <img id="music-cover" class="music-cover" src="" alt="" />
-      <div class="music-info">
-        <div id="music-title" class="music-title">...</div>
-        <div class="music-seek-row">
-          <span id="music-current" class="music-time">0:00</span>
-          <input type="range" id="music-seek" class="music-seek" min="0" max="1000" value="0" step="1" />
-          <span id="music-duration" class="music-time">0:00</span>
+      <button type="button" class="btn primary" id="save-discord">Lưu widget Discord</button>
+      <p class="status" id="status-discord"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Nội dung khi click vào avatar</h2>
+      <label class="switch-row">
+        <input type="checkbox" id="field-clickEnabled" />
+        <span>Bật popup khi bấm vào avatar</span>
+      </label>
+
+      <label>Danh sách câu hiện ra (ngẫu nhiên 1 câu mỗi lần bấm)</label>
+      <div id="click-messages"></div>
+      <button type="button" class="btn small" id="add-click-message">+ thêm câu</button>
+
+      <label>Font chữ popup (bỏ trống = dùng font chung)</label>
+      <input type="text" id="field-clickFont" placeholder="ví dụ: Pacifico" />
+
+      <label>Màu chữ popup</label>
+      <input type="color" id="field-clickColor" />
+
+      <button type="button" class="btn primary" id="save-click">Lưu nội dung click</button>
+      <p class="status" id="status-click"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Nhạc nền</h2>
+      <audio id="song-preview" controls></audio>
+      <input type="file" id="song-input" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,.mp3" />
+      <button type="button" class="btn primary" id="upload-song">Tải nhạc lên</button>
+      <p class="status" id="status-song"></p>
+
+      <label>Ảnh bìa nhạc</label>
+      <img id="song-cover-preview" class="avatar-preview small" alt="" />
+      <input type="file" id="song-cover-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <button type="button" class="btn primary small" id="upload-song-cover">Tải ảnh bìa</button>
+
+      <label>Tên bài hát hiển thị</label>
+      <input type="text" id="field-songTitle" maxlength="80" />
+      <button type="button" class="btn primary" id="save-song-title">Lưu tên bài hát</button>
+      <p class="status" id="status-song-title"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Danh sách link</h2>
+      <div id="links-list"></div>
+      <button type="button" class="btn small" id="add-link">+ thêm link</button>
+      <button type="button" class="btn primary" id="save-links">Lưu danh sách link</button>
+      <p class="status" id="status-links"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Kích thước &amp; màu khung Discord / Nhạc / Link</h2>
+      <p class="hint">Ngoài kéo-giãn trực tiếp ở khung xem trước bên dưới, bạn có thể chỉnh màu nền &amp; viền của từng khung tại đây.</p>
+
+      <div class="box-style-grid">
+        <div class="box-style-col">
+          <h3>Khung Discord</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-discordBg" />
+          <label>Độ mờ nền: <span id="discordBgOpacity-value">60</span>%</label>
+          <input type="range" id="field-discordBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-discordBorder" />
+          <label>Độ mờ viền: <span id="discordBorderOpacity-value">10</span>%</label>
+          <input type="range" id="field-discordBorderOpacity" min="0" max="100" step="1" />
+        </div>
+
+        <div class="box-style-col">
+          <h3>Khung nhạc</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-musicBg" />
+          <label>Độ mờ nền: <span id="musicBgOpacity-value">60</span>%</label>
+          <input type="range" id="field-musicBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-musicBorder" />
+          <label>Độ mờ viền: <span id="musicBorderOpacity-value">10</span>%</label>
+          <input type="range" id="field-musicBorderOpacity" min="0" max="100" step="1" />
+        </div>
+
+        <div class="box-style-col">
+          <h3>Các nút link</h3>
+          <label>Màu nền</label>
+          <input type="color" id="field-linksBg" />
+          <label>Độ mờ nền: <span id="linksBgOpacity-value">55</span>%</label>
+          <input type="range" id="field-linksBgOpacity" min="0" max="100" step="1" />
+          <label>Màu viền</label>
+          <input type="color" id="field-linksBorder" />
+          <label>Độ mờ viền: <span id="linksBorderOpacity-value">12</span>%</label>
+          <input type="range" id="field-linksBorderOpacity" min="0" max="100" step="1" />
         </div>
       </div>
-      <button id="music-toggle" class="music-toggle-btn" aria-label="bật/tắt nhạc">
-        <svg id="music-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="2"/></svg>
-      </button>
-    </div>
+
+      <button type="button" class="btn primary" id="save-boxstyles">Lưu màu khung</button>
+      <p class="status" id="status-boxstyles"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Vị trí &amp; kích thước các thành phần</h2>
+      <p class="hint">
+        Kéo thả từng khối trực tiếp trên bản xem trước bên dưới để đổi vị trí.
+        Kéo ô vuông tím ở góc dưới-phải mỗi khối để đổi kích thước: khung Discord/nhạc kéo giãn dài ra hoặc phóng to tùy ý,
+        các khối còn lại phóng to/nhỏ đều. Xong thì bấm "Lưu vị trí &amp; kích thước".
+      </p>
+      <div class="position-frame-wrap">
+        <iframe id="position-iframe" class="position-iframe" src="/?editPositions=1"></iframe>
+      </div>
+      <button type="button" class="btn primary" id="save-positions">Lưu vị trí &amp; kích thước</button>
+      <button type="button" class="btn ghost" id="reset-positions">Khôi phục mặc định</button>
+      <p class="status" id="status-positions"></p>
+    </section>
 
   </main>
+</div>
 
-  <audio id="bg-audio" loop preload="none"></audio>
-
-  <script src="script.js"></script>
+<script src="admin.js"></script>
 </body>
 </html>
