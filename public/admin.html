@@ -54,7 +54,8 @@
     <section class="panel">
       <h2>Nền trang (ảnh / gif)</h2>
       <img id="background-preview" class="background-preview" alt="nền" />
-      <input type="file" id="background-input" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <video id="background-preview-video" class="background-preview" muted loop autoplay playsinline hidden></video>
+      <input type="file" id="background-input" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,.mp4,.webm" />
       <button type="button" class="btn primary" id="upload-background">Tải ảnh nền lên</button>
       <p class="status" id="status-background"></p>
 
@@ -281,8 +282,14 @@
       <p class="hint">
         Kéo thả từng khối trực tiếp trên bản xem trước bên dưới để đổi vị trí.
         Kéo ô vuông tím ở góc dưới-phải mỗi khối để đổi kích thước: khung Discord/nhạc kéo giãn dài ra hoặc phóng to tùy ý,
-        các khối còn lại phóng to/nhỏ đều. Xong thì bấm "Lưu vị trí &amp; kích thước".
+        các khối còn lại phóng to/nhỏ đều. Bấm chọn 1 khối (viền hồng) rồi bấm nút căn bên dưới để canh nhanh.
+        Xong thì bấm "Lưu vị trí &amp; kích thước".
       </p>
+      <div class="align-toolbar">
+        <button type="button" class="btn small" id="align-left" title="Căn khối đang chọn sát mép trái">⬅ Căn trái</button>
+        <button type="button" class="btn small" id="align-center" title="Căn khối đang chọn vào giữa">↔ Căn giữa</button>
+        <button type="button" class="btn small" id="align-right" title="Căn khối đang chọn sát mép phải">➡ Căn phải</button>
+      </div>
       <div class="position-frame-wrap">
         <iframe id="position-iframe" class="position-iframe" src="/?editPositions=1"></iframe>
       </div>
