@@ -141,23 +141,22 @@ function renderDiscordManual() {
   document.getElementById('discord-status-dot').dataset.status = siteSettings.discordManualStatus || 'online';
 }
 
-// Đặt chữ cho dòng trạng thái Discord; nếu chữ dài hơn khung thì tự chạy chữ (marquee)
-// từ đầu đến cuối liên tục, tốc độ tính theo độ dài chữ để luôn mượt như nhau.
+// Đặt chữ cho dòng trạng thái Discord; chữ sẽ luôn tự chạy (marquee) liên tục từ đầu
+// đến cuối rồi lặp lại, tốc độ tính theo độ dài chữ để chữ ngắn hay dài đều chạy đều tay.
 function setDiscordMessage(text) {
   const wrap = document.getElementById('discord-message');
   const inner = document.getElementById('discord-message-inner');
   inner.textContent = text || '';
   wrap.classList.remove('marquee');
 
+  if (!inner.textContent.trim()) return;
+
   requestAnimationFrame(() => {
-    const overflowing = inner.scrollWidth > wrap.clientWidth + 1;
-    if (overflowing) {
-      const PX_PER_SEC = 40;
-      const distance = wrap.clientWidth + inner.scrollWidth;
-      const duration = Math.max(4, distance / PX_PER_SEC);
-      wrap.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
-      wrap.classList.add('marquee');
-    }
+    const PX_PER_SEC = 35;
+    const distance = wrap.clientWidth + inner.scrollWidth;
+    const duration = Math.max(3.5, distance / PX_PER_SEC);
+    wrap.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
+    wrap.classList.add('marquee');
   });
 }
 
