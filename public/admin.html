@@ -77,14 +77,11 @@
       <label>Màu viền (khung Discord khi hover link, viền chọn khối lúc chỉnh vị trí...)</label>
       <input type="color" id="field-accentBorderColor" />
 
-      <label>Màu icon (nút tua nhạc, kim tuyến quanh tên...)</label>
+      <label>Màu icon (nút tua nhạc...)</label>
       <input type="color" id="field-accentIconColor" />
 
       <label>Màu con trỏ nhấp nháy (sau tiểu sử)</label>
       <input type="color" id="field-accentCursorColor" />
-
-      <label>Màu kim tuyến quanh tên (riêng, không lẫn với màu icon)</label>
-      <input type="color" id="field-usernameSparkleColor" />
 
       <label>Màu chữ phụ (tiểu sử, lượt xem, giờ nhạc, dòng phụ Discord...)</label>
       <input type="color" id="field-mutedColor" />
@@ -122,6 +119,23 @@
 
       <button type="button" class="btn primary" id="save-glow">Lưu hiệu ứng phát sáng</button>
       <p class="status" id="status-glow"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Hiệu ứng kim tuyến (3 loại riêng biệt)</h2>
+      <p class="hint">Mỗi loại có màu riêng, không dùng chung với nhau.</p>
+
+      <label>1. Kim tuyến theo con trỏ chuột (hạt bay theo khi bạn rê chuột)</label>
+      <input type="color" id="field-sparkleCursorColor" />
+
+      <label>2. Kim tuyến quanh tên (chữ lớn)</label>
+      <input type="color" id="field-usernameSparkleColor" />
+
+      <label>3. Kim tuyến rải khắp trang (hạt tự bay ngẫu nhiên khắp màn hình, kể cả khi không rê chuột)</label>
+      <input type="color" id="field-sparklePageColor" />
+
+      <button type="button" class="btn primary" id="save-sparkle">Lưu hiệu ứng kim tuyến</button>
+      <p class="status" id="status-sparkle"></p>
     </section>
 
     <section class="panel">
