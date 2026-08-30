@@ -121,6 +121,14 @@ async function loadSettings() {
   discordAvatarPreview.src = settings.discordManualAvatar || '';
   discordAvatarPreview.style.visibility = settings.discordManualAvatar ? 'visible' : 'hidden';
 
+  // ---- Khung ảnh đại diện ----
+  document.getElementById('field-avatarFrameEnabled').checked = !!settings.avatarFrameEnabled;
+  document.getElementById('field-avatarFrameMode').value = settings.avatarFrameMode || 'manual';
+  toggleAvatarFrameModeFields();
+  const avatarFramePreview = document.getElementById('avatar-frame-preview');
+  avatarFramePreview.src = settings.avatarFrameManual || '';
+  avatarFramePreview.style.visibility = settings.avatarFrameManual ? 'visible' : 'hidden';
+
   // ---- Popup khi click avatar ----
   document.getElementById('field-clickEnabled').checked = !!settings.clickEnabled;
   renderClickMessages(settings.clickMessages || []);
@@ -171,6 +179,13 @@ function toggleDiscordModeFields() {
   document.getElementById('discord-live-fields').classList.toggle('hidden', mode !== 'live');
 }
 document.getElementById('field-discordMode').addEventListener('change', toggleDiscordModeFields);
+
+function toggleAvatarFrameModeFields() {
+  const mode = document.getElementById('field-avatarFrameMode').value;
+  document.getElementById('avatar-frame-manual-fields').classList.toggle('hidden', mode !== 'manual');
+  document.getElementById('avatar-frame-live-fields').classList.toggle('hidden', mode !== 'live');
+}
+document.getElementById('field-avatarFrameMode').addEventListener('change', toggleAvatarFrameModeFields);
 
 document.getElementById('field-fontFamily').addEventListener('change', (e) => {
   document.getElementById('field-customFontFamily').classList.toggle('hidden', e.target.value !== 'custom');
@@ -337,6 +352,15 @@ document.getElementById('save-discord').addEventListener('click', () => {
   saveSettings(patch, 'status-discord');
 });
 
+// ---------- Khung ảnh đại diện ----------
+document.getElementById('save-avatar-frame').addEventListener('click', () => {
+  const patch = {
+    avatarFrameEnabled: document.getElementById('field-avatarFrameEnabled').checked,
+    avatarFrameMode: document.getElementById('field-avatarFrameMode').value,
+  };
+  saveSettings(patch, 'status-avatar-frame');
+});
+
 // ---------- Tên bài hát ----------
 document.getElementById('save-song-title').addEventListener('click', () => {
   const songTitle = document.getElementById('field-songTitle').value;
@@ -448,6 +472,14 @@ document.getElementById('upload-cursor').addEventListener('click', async () => {
 document.getElementById('upload-discord-avatar').addEventListener('click', () => {
   uploadFile('discordManualAvatar', document.getElementById('discord-avatar-input'), 'status-discord', (url) => {
     const el = document.getElementById('discord-avatar-preview');
+    el.src = url;
+    el.style.visibility = 'visible';
+  });
+});
+
+document.getElementById('upload-avatar-frame').addEventListener('click', () => {
+  uploadFile('avatarFrameManual', document.getElementById('avatar-frame-input'), 'status-avatar-frame', (url) => {
+    const el = document.getElementById('avatar-frame-preview');
     el.src = url;
     el.style.visibility = 'visible';
   });
