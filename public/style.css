@@ -124,7 +124,7 @@ body.has-custom-cursor * {
   top: 10%;
   left: 50%;
   --el-scale-cap: 3;
-  transform: translate(-50%, -50%) scale(min(var(--el-scale, 1), var(--el-scale-cap, 3)));
+  transform: translate(calc(-50% + var(--el-shift-x, 0px)), -50%) scale(min(var(--el-scale, 1), var(--el-scale-cap, 3)));
   text-align: center;
   transition: top 0.15s ease, left 0.15s ease;
 }
