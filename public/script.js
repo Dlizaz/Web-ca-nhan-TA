@@ -88,10 +88,21 @@ function applyAppearance() {
   if (siteSettings.mutedColor) root.style.setProperty('--muted', siteSettings.mutedColor);
   root.style.setProperty('--overlay-opacity', (Number(siteSettings.overlayOpacity ?? 45) / 100).toString());
 
-  // Nền
+  // Nền: tự nhận diện ảnh (jpg/png/gif/webp) hay video (mp4/webm) theo đuôi file
   const bgLayer = document.getElementById('bg-layer');
+  const bgVideo = document.getElementById('bg-video');
   if (siteSettings.background) {
-    bgLayer.style.backgroundImage = `url('${siteSettings.background}')`;
+    const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(siteSettings.background);
+    if (isVideo) {
+      if (bgVideo.src !== siteSettings.background) bgVideo.src = siteSettings.background;
+      bgVideo.hidden = false;
+      bgVideo.play().catch(() => {}); // một số trình duyệt mobile cần user tương tác mới auto-play được
+      bgLayer.style.backgroundImage = 'none';
+    } else {
+      bgVideo.hidden = true;
+      bgVideo.removeAttribute('src');
+      bgLayer.style.backgroundImage = `url('${siteSettings.background}')`;
+    }
   }
   if (siteSettings.backgroundColor) {
     bgLayer.style.backgroundColor = siteSettings.backgroundColor;
@@ -369,10 +380,18 @@ function setupPositionEditing() {
   let dragEl = null;
   let resizeEl = null;
   let resizeStart = null;
+  let selectedEl = null;
+
+  function selectElement(el) {
+    if (selectedEl) selectedEl.classList.remove('selected-el');
+    selectedEl = el;
+    if (selectedEl) selectedEl.classList.add('selected-el');
+  }
 
   function onPointerDown(e) {
     dragEl = e.currentTarget;
     dragEl.classList.add('dragging');
+    selectElement(dragEl);
     e.preventDefault();
   }
 
@@ -404,6 +423,7 @@ function setupPositionEditing() {
     e.preventDefault();
     resizeEl = e.currentTarget.parentElement;
     resizeEl.classList.add('dragging');
+    selectElement(resizeEl);
     const rect = resizeEl.getBoundingClientRect();
     resizeStart = { x: e.clientX, y: e.clientY, width: rect.width, height: rect.height };
   }
@@ -459,6 +479,30 @@ function setupPositionEditing() {
   });
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
+
+  // ---- Nhận lệnh căn trái / giữa / phải từ trang admin, áp cho khối đang được chọn ----
+  const EDGE_MARGIN_VW = 4; // khoảng cách với mép màn hình khi căn trái/phải, tính theo % chiều rộng
+  window.addEventListener('message', (e) => {
+    const data = e.data || {};
+    if (data.type !== 'milky-align' || !selectedEl) return;
+    const rect = selectedEl.getBoundingClientRect();
+    const vw = window.innerWidth;
+    let leftPct;
+    if (data.align === 'left') {
+      leftPct = EDGE_MARGIN_VW + (rect.width / vw) * 50;
+    } else if (data.align === 'right') {
+      leftPct = 100 - EDGE_MARGIN_VW - (rect.width / vw) * 50;
+    } else {
+      leftPct = 50;
+    }
+    leftPct = Math.min(100, Math.max(0, leftPct));
+    selectedEl.style.left = `${leftPct}%`;
+    const key = selectedEl.dataset.posKey;
+    const top = parseFloat(selectedEl.style.top);
+    if (window.parent) {
+      window.parent.postMessage({ type: 'milky-position-update', key, top, left: leftPct }, '*');
+    }
+  });
 
   if (window.parent) {
     window.parent.postMessage({ type: 'milky-editor-ready' }, '*');
