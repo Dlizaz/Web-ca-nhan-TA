@@ -83,6 +83,7 @@ function applyAppearance() {
 
   if (siteSettings.textColor) root.style.setProperty('--text', siteSettings.textColor);
   if (siteSettings.accentColor) root.style.setProperty('--accent', siteSettings.accentColor);
+  if (siteSettings.mutedColor) root.style.setProperty('--muted', siteSettings.mutedColor);
   root.style.setProperty('--overlay-opacity', (Number(siteSettings.overlayOpacity ?? 45) / 100).toString());
 
   // Nền
