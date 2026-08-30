@@ -155,6 +155,35 @@
     </section>
 
     <section class="panel">
+      <h2>Khung ảnh đại diện (avatar)</h2>
+      <label class="switch-row">
+        <input type="checkbox" id="field-avatarFrameEnabled" />
+        <span>Hiện khung quanh avatar chính ngoài trang</span>
+      </label>
+
+      <label>Nguồn lấy khung</label>
+      <select id="field-avatarFrameMode">
+        <option value="manual">Tự upload ảnh khung</option>
+        <option value="live">Tự động lấy thật từ Discord (khi bật "Discord Live" ở widget bên trên)</option>
+      </select>
+
+      <div id="avatar-frame-manual-fields">
+        <img id="avatar-frame-preview" class="avatar-preview small" alt="" />
+        <input type="file" id="avatar-frame-input" accept="image/png,image/webp,image/gif" />
+        <button type="button" class="btn small" id="upload-avatar-frame">Tải ảnh khung</button>
+        <p class="hint">Nên dùng ảnh PNG nền trong suốt, phần trang trí (hoa, tim, sao...) nằm quanh viền để tràn ra ngoài avatar tròn.</p>
+      </div>
+
+      <div id="avatar-frame-live-fields" class="hidden">
+        <p class="hint">Chế độ này dùng chung "Discord User ID" đã nhập ở mục Widget Discord phía trên.
+        Khung sẽ tự hiện đúng khung trang trí (avatar decoration) mà tài khoản Discord của bạn đang gắn — nếu bạn tháo khung trên Discord, nó cũng biến mất khỏi trang.</p>
+      </div>
+
+      <button type="button" class="btn primary" id="save-avatar-frame">Lưu khung avatar</button>
+      <p class="status" id="status-avatar-frame"></p>
+    </section>
+
+    <section class="panel">
       <h2>Nội dung khi click vào avatar</h2>
       <label class="switch-row">
         <input type="checkbox" id="field-clickEnabled" />
