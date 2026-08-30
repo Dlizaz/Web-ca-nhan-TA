@@ -32,12 +32,13 @@
     <!-- Avatar -->
     <div id="el-avatar" class="pos-el avatar-wrap">
       <img id="avatar-img" src="" alt="avatar" class="avatar" onerror="this.style.display='none'" />
+      <img id="avatar-frame-img" class="avatar-frame" src="" alt="" hidden />
       <span class="status-dot"></span>
       <div id="click-bubble" class="click-bubble"></div>
     </div>
 
     <!-- Tên -->
-    <h1 id="el-username" class="pos-el username"><span id="username-text">...</span><span class="badge" title="verified">✓</span></h1>
+    <h1 id="el-username" class="pos-el username"><span id="username-sparkles" class="username-sparkles"></span><span id="username-text">...</span></h1>
 
     <!-- Tiểu sử gõ chữ -->
     <p id="el-bio" class="pos-el bio-wrap"><span id="typed-bio" class="bio"></span></p>
@@ -56,7 +57,7 @@
           <span id="discord-name"></span>
           <span id="discord-tag"></span>
         </div>
-        <div id="discord-message" class="discord-message"></div>
+        <div id="discord-message" class="discord-message"><span id="discord-message-inner" class="discord-message-inner"></span></div>
       </div>
       <span id="discord-status-dot" class="discord-status-dot"></span>
     </div>
