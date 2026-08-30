@@ -360,12 +360,13 @@ document.getElementById('save-boxstyles').addEventListener('click', () => {
 });
 
 // ---------- Upload chung (avatar / background / cursor / song / songCover / discordManualAvatar) ----------
-async function uploadFile(kind, inputEl, statusElId, onDone) {
+async function uploadFile(kind, fileSource, statusElId, onDone) {
   const statusEl = document.getElementById(statusElId);
-  if (!inputEl.files[0]) { statusEl.textContent = 'chọn file trước đã'; setTimeout(() => (statusEl.textContent = ''), 2000); return; }
+  const file = fileSource instanceof File ? fileSource : fileSource.files[0];
+  if (!file) { statusEl.textContent = 'chọn file trước đã'; setTimeout(() => (statusEl.textContent = ''), 2000); return; }
 
   const fd = new FormData();
-  fd.append('file', inputEl.files[0]);
+  fd.append('file', file);
   statusEl.textContent = 'Đang tải lên...';
 
   try {
@@ -381,6 +382,38 @@ async function uploadFile(kind, inputEl, statusElId, onDone) {
     statusEl.textContent = 'lỗi kết nối';
   }
   setTimeout(() => (statusEl.textContent = ''), 2500);
+}
+
+// Trình duyệt chỉ hiển thị được con trỏ ảnh ở kích thước rất nhỏ (thường tối đa ~128px,
+// khuyến nghị 32px). Ảnh gốc lớn hơn sẽ bị trình duyệt ÂM THẦM bỏ qua và quay về con trỏ
+// mặc định — không báo lỗi gì, nên nhìn như "lưu rồi mà không hiện". Vì vậy luôn thu nhỏ
+// ảnh về đúng kích thước con trỏ (giữ khung trong suốt, căn giữa) trước khi tải lên.
+function resizeCursorImage(file, size = 32) {
+  return new Promise((resolve) => {
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+      resolve(file); // .cur/.ico: canvas không đọc được, giữ nguyên file gốc
+      return;
+    }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.min(size / img.width, size / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(blob ? new File([blob], 'cursor.png', { type: 'image/png' }) : file);
+      }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+    img.src = objectUrl;
+  });
 }
 
 document.getElementById('upload-avatar').addEventListener('click', () => {
@@ -399,8 +432,13 @@ document.getElementById('upload-background').addEventListener('click', () => {
   });
 });
 
-document.getElementById('upload-cursor').addEventListener('click', () => {
-  uploadFile('cursor', document.getElementById('cursor-input'), 'status-cursor', (url) => {
+document.getElementById('upload-cursor').addEventListener('click', async () => {
+  const inputEl = document.getElementById('cursor-input');
+  const statusEl = document.getElementById('status-cursor');
+  if (!inputEl.files[0]) { statusEl.textContent = 'chọn file trước đã'; setTimeout(() => (statusEl.textContent = ''), 2000); return; }
+  statusEl.textContent = 'Đang xử lý ảnh...';
+  const resized = await resizeCursorImage(inputEl.files[0], 32);
+  uploadFile('cursor', resized, 'status-cursor', (url) => {
     const el = document.getElementById('cursor-preview');
     el.src = url;
     el.style.visibility = 'visible';
