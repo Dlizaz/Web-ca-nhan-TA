@@ -190,7 +190,6 @@ body.edit-positions .pos-el .resize-handle {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255,255,255,0.18);
-  box-shadow: 0 0 0 6px rgba(124, 92, 255, 0.14), 0 0 30px rgba(124, 92, 255, 0.3);
   cursor: pointer;
   position: relative;
   z-index: 1;
@@ -340,8 +339,8 @@ body.edit-positions .pos-el .resize-handle {
   background: var(--box-bg, rgba(16, 16, 24, 0.6));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  width: max-content;
-  max-width: min(320px, 80vw);
+  /* Rộng cố định mặc định (không co theo độ dài chữ trạng thái); admin vẫn kéo giãn tùy ý trong /admin */
+  width: min(260px, 82vw);
   box-shadow: 0 14px 40px rgba(0,0,0,0.35);
 }
 
@@ -354,7 +353,7 @@ body.edit-positions .pos-el .resize-handle {
   flex-shrink: 0;
 }
 
-.discord-info { text-align: left; overflow: hidden; }
+.discord-info { flex: 1 1 auto; min-width: 0; text-align: left; overflow: hidden; }
 
 .discord-name-row {
   display: flex;
@@ -372,7 +371,7 @@ body.edit-positions .pos-el .resize-handle {
   font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
-  max-width: 220px;
+  width: 100%;
   position: relative;
 }
 
@@ -391,20 +390,6 @@ body.edit-positions .pos-el .resize-handle {
   from { transform: translateX(0); }
   to   { transform: translateX(-100%); }
 }
-
-.discord-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: #8b8b9e;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
-}
-
-.discord-status-dot[data-status="online"] { background: #3ddc84; }
-.discord-status-dot[data-status="idle"] { background: #f5c04a; }
-.discord-status-dot[data-status="dnd"] { background: #ff5c7a; }
-.discord-status-dot[data-status="offline"] { background: #6b6b7a; }
 
 /* ---------- Links ---------- */
 .links {
@@ -555,7 +540,6 @@ body.edit-positions .pos-el .resize-handle {
      Dùng !important vì JS chỉnh width/max-width trực tiếp qua inline style (specificity cao). */
   .pos-el { --el-scale-cap: 1.35; }
   .discord-box, .music-box {
-    width: auto !important;
     max-width: 88vw !important;
   }
 }
