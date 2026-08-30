@@ -195,14 +195,14 @@ body.edit-positions .pos-el .resize-handle {
   z-index: 1;
 }
 
-/* Khung ảnh đại diện (avatar decoration): ảnh PNG trong suốt, rộng hơn avatar để phần
-   trang trí (hoa, tim, ngôi sao...) tràn ra ngoài viền tròn, giống khung Discord thật */
+/* Khung ảnh đại diện (avatar decoration): theo chuẩn của Discord, khung luôn được thiết kế
+   bằng đúng 1.2 lần kích thước avatar (avatar nằm giữa, khung tràn ra ngoài viền tròn 1 khoảng đều) */
 .avatar-frame {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 148%;
-  height: 148%;
+  width: 120%;
+  height: 120%;
   transform: translate(-50%, -50%);
   object-fit: contain;
   pointer-events: none;
