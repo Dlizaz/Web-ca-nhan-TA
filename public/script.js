@@ -149,7 +149,6 @@ function renderDiscordManual() {
   document.getElementById('discord-name').textContent = siteSettings.discordManualName || 'discord';
   document.getElementById('discord-tag').textContent = siteSettings.discordManualTag ? `#${siteSettings.discordManualTag}` : '';
   setDiscordMessage(siteSettings.discordManualMessage || '');
-  document.getElementById('discord-status-dot').dataset.status = siteSettings.discordManualStatus || 'online';
 }
 
 // Đặt chữ cho dòng trạng thái Discord; chữ sẽ luôn tự chạy (marquee) liên tục từ đầu
@@ -233,7 +232,6 @@ async function fetchLanyard() {
       else if (d.discord_status === 'dnd') msg = 'không làm phiền';
       else msg = 'offline';
       setDiscordMessage(msg);
-      document.getElementById('discord-status-dot').dataset.status = d.discord_status || 'offline';
     }
 
     if (frameLive) {
