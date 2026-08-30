@@ -11,7 +11,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme123';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-doi-di-nha';
 
 const ALLOWED_ICONS = ['discord', 'instagram', 'tiktok', 'youtube', 'twitter', 'github', 'spotify', 'link'];
-const ALLOWED_UPLOAD_KINDS = ['avatar', 'song', 'background', 'cursor', 'songCover', 'discordManualAvatar'];
+const ALLOWED_UPLOAD_KINDS = ['avatar', 'song', 'background', 'cursor', 'songCover', 'discordManualAvatar', 'avatarFrameManual'];
 const ALLOWED_POSITION_KEYS = ['avatar', 'username', 'bio', 'views', 'discord', 'links', 'music'];
 const ALLOWED_SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
 const ALLOWED_BOX_KEYS = ['discord', 'music'];
@@ -122,6 +122,10 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     if (typeof b.discordManualTag === 'string') patch.discordManualTag = b.discordManualTag.slice(0, 40);
     if (['online', 'idle', 'dnd', 'offline'].includes(b.discordManualStatus)) patch.discordManualStatus = b.discordManualStatus;
     if (typeof b.discordManualMessage === 'string') patch.discordManualMessage = b.discordManualMessage.slice(0, 140);
+
+    // ----- Khung ảnh đại diện (avatar decoration) -----
+    if (typeof b.avatarFrameEnabled === 'boolean') patch.avatarFrameEnabled = b.avatarFrameEnabled;
+    if (['manual', 'live'].includes(b.avatarFrameMode)) patch.avatarFrameMode = b.avatarFrameMode;
 
     // ----- Popup khi click -----
     if (typeof b.clickEnabled === 'boolean') patch.clickEnabled = b.clickEnabled;
