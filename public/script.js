@@ -1254,237 +1254,186 @@ function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
 function startCustomUsernameEffect(effectConfig={}) {
   destroyCustomUsernameEffect();
 
-  const container = document.getElementById("tsparticles-username");
-  const textEl = document.getElementById("username-text");
-  if (!container || !textEl || effectConfig.enable === false) return;
+  const container=document.getElementById("tsparticles-username");
+  const textEl=document.getElementById("username-text");
+  if(!container||!textEl||effectConfig.enable===false)return;
 
-  const colors = Array.isArray(effectConfig.colors) && effectConfig.colors.length
-    ? effectConfig.colors : ["#FFFFFF", "#C9B6FF", "#FFBDE6"];
-  const count = Math.max(1, Math.min(140, Number(effectConfig.count) || 45));
-  const size = effectConfig.size || {min:.8,max:1.8};
-  const opacity = effectConfig.opacity || {min:.08,max:.85};
-  const area = effectConfig.area || {paddingX:10,paddingY:8};
-  const speed = effectConfig.speed || {min:.45,max:1.15};
-  const fade = effectConfig.fadeTime || {min:1800,max:3200};
-  const visible = effectConfig.visibleTime || {min:1200,max:3000};
-  const hidden = effectConfig.hiddenTime || {min:700,max:1800};
-  const rotation = effectConfig.rotation || {};
+  const colors=Array.isArray(effectConfig.colors)&&effectConfig.colors.length
+    ?effectConfig.colors:["#FFFFFF","#C9B6FF","#FFBDE6"];
+  const count=Math.max(1,Math.min(140,Number(effectConfig.count)||45));
+  const size=effectConfig.size||{min:.8,max:1.8};
+  const opacity=effectConfig.opacity||{min:.08,max:.85};
+  const area=effectConfig.area||{paddingX:10,paddingY:8};
+  const speed=effectConfig.speed||{min:.45,max:1.15};
+  const fade=effectConfig.fadeTime||{min:1800,max:3200};
+  const visible=effectConfig.visibleTime||{min:1200,max:3000};
+  const hidden=effectConfig.hiddenTime||{min:700,max:1800};
+  const rotation=effectConfig.rotation||{};
 
-  const px = Number.isFinite(Number(area.paddingX)) ? Number(area.paddingX) : 8;
-  const py = Number.isFinite(Number(area.paddingY)) ? Number(area.paddingY) : 6;
+  const px=Math.max(0,Number(area.paddingX)||8);
+  const py=Math.max(0,Number(area.paddingY)||6);
 
-  container.innerHTML = "";
-  container.style.position = "absolute";
-  container.style.pointerEvents = "none";
-  container.style.overflow = "visible";
-  container.style.margin = "0";
-  container.style.padding = "0";
-  container.style.zIndex = "0";
+  // IMPORTANT: make the particle layer a child of the username text itself.
+  // This removes ALL parent/viewport coordinate calculations.
+  if(container.parentElement!==textEl){
+    textEl.appendChild(container);
+  }
 
-  const canvas = document.createElement("canvas");
-  canvas.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;display:block;background:transparent;";
+  container.style.cssText=[
+    "position:absolute",
+    `left:${-px}px`,
+    `top:${-py}px`,
+    "right:auto",
+    "bottom:auto",
+    `width:calc(100% + ${px*2}px)`,
+    `height:calc(100% + ${py*2}px)`,
+    "pointer-events:none",
+    "overflow:visible",
+    "margin:0",
+    "padding:0",
+    "background:transparent",
+    "border:0",
+    "box-shadow:none",
+    "transform:none",
+    "z-index:0"
+  ].join(";");
+
+  // Keep text above the transparent canvas.
+  textEl.style.position=textEl.style.position||"relative";
+  textEl.style.zIndex="1";
+
+  container.innerHTML="";
+  const canvas=document.createElement("canvas");
+  canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;background:transparent;";
   container.appendChild(canvas);
+  const ctx=canvas.getContext("2d");
+  if(!ctx)return;
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  let width=1,height=1,dpr=1,raf=0,last=performance.now();
 
-  let width=1, height=1, dpr=1, raf=0, last=performance.now();
-  let anchors=[];
-
-  function rand(v, a, b) {
-    if (typeof v === "number") return v;
-    const min=Number(v?.min), max=Number(v?.max);
-    if(Number.isFinite(min)&&Number.isFinite(max)) return min+Math.random()*(max-min);
-    return a+Math.random()*(b-a);
+  function rand(v,a,b){
+    if(typeof v==="number")return v;
+    const min=Number(v?.min),max=Number(v?.max);
+    return Number.isFinite(min)&&Number.isFinite(max)?min+Math.random()*(max-min):a+Math.random()*(b-a);
   }
 
-  // Build anchors from the ACTUAL GLYPHS of "Milky Dli".
-  // This is the key difference: particles are attached to letters,
-  // not distributed around a rectangular canvas.
-  function buildAnchors() {
-    const text = textEl.textContent || "";
-    const textRect = textEl.getBoundingClientRect();
-    anchors = [];
-
-    const range = document.createRange();
-    const node = textEl.firstChild;
-
-    if (node && node.nodeType === Node.TEXT_NODE && text.length) {
-      for (let i=0;i<text.length;i++) {
-        if (text[i].trim()==="") continue;
-        try {
-          range.setStart(node,i);
-          range.setEnd(node,i+1);
-          const r = range.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            anchors.push({
-              x: r.left - textRect.left + r.width/2,
-              y: r.top - textRect.top + r.height/2,
-              w: r.width,
-              h: r.height
-            });
-          }
-        } catch(e) {}
-      }
-    }
-
-    if (!anchors.length) {
-      anchors.push({
-        x: textRect.width/2,
-        y: textRect.height/2,
-        w: textRect.width,
-        h: textRect.height
-      });
-    }
-  }
-
-  function place() {
-    const textRect = textEl.getBoundingClientRect();
-    const parentRect = container.parentElement.getBoundingClientRect();
-
-    // The transparent canvas is exactly the text box + a tiny invisible margin.
-    // It does not use the bio/profile dimensions.
-    container.style.left = `${textRect.left-parentRect.left-px}px`;
-    container.style.top = `${textRect.top-parentRect.top-py}px`;
-    width=Math.max(1,textRect.width+px*2);
-    height=Math.max(1,textRect.height+py*2);
-    container.style.width=`${width}px`;
-    container.style.height=`${height}px`;
-    container.style.right="auto";
-    container.style.bottom="auto";
-    container.style.transform="none";
-
+  function resize(){
+    const r=textEl.getBoundingClientRect();
+    width=Math.max(1,r.width+px*2);
+    height=Math.max(1,r.height+py*2);
     dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.ceil(width*dpr);
     canvas.height=Math.ceil(height*dpr);
     canvas.style.width=`${width}px`;
     canvas.style.height=`${height}px`;
-
-    buildAnchors();
   }
-
-  place();
-
-  function anchorPoint() {
-    const a=anchors[Math.floor(Math.random()*anchors.length)];
-    const side=Math.floor(Math.random()*8);
-
-    // Spawn close to the actual letter edge, 2–7px away.
-    const gap=2+Math.random()*Math.max(2,Math.min(px,7));
-    let x=a.x, y=a.y;
-
-    if(side===0){x=a.x;y=a.y-a.h/2-gap;}
-    else if(side===1){x=a.x+a.w/2+gap;y=a.y;}
-    else if(side===2){x=a.x;y=a.y+a.h/2+gap;}
-    else if(side===3){x=a.x-a.w/2-gap;y=a.y;}
-    else {
-      const ang=Math.random()*Math.PI*2;
-      const radius=Math.max(a.w,a.h)/2+gap;
-      x=a.x+Math.cos(ang)*radius;
-      y=a.y+Math.sin(ang)*radius;
-    }
-    return {x:x+px,y:y+py,ax:a.x+px,ay:a.y+py};
-  }
+  resize();
 
   const particles=[];
-  function spawn() {
-    const p=anchorPoint();
+  function spawn(){
+    // Very small ring around the actual text box, not a large canvas region.
+    const r=textEl.getBoundingClientRect();
+    const w=Math.max(1,r.width),h=Math.max(1,r.height);
+    const side=Math.floor(Math.random()*4),gap=1+Math.random()*Math.max(1,Math.min(px,5));
+    let x,y;
+    if(side===0){x=Math.random()*w+px;y=py-gap;}
+    else if(side===1){x=w+px+gap;y=Math.random()*h+py;}
+    else if(side===2){x=Math.random()*w+px;y=h+py+gap;}
+    else{x=px-gap;y=Math.random()*h+py;}
+
     particles.push({
-      x:p.x,y:p.y,ax:p.ax,ay:p.ay,
+      x,y,bx:x,by:y,
       size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
       max:rand(opacity,.08,.85),
-      opacity:0,
-      state:"hidden",
+      opacity:0,state:"hidden",
       timer:rand(hidden,700,1800),
       fade:rand(fade,1800,3200),
       phase:Math.random()*Math.PI*2,
-      orbit:1.0+Math.random()*3.5,
-      orbitSpeed:rand(speed,.45,1.15),
+      drift:1+Math.random()*2.2,
+      driftSpeed:rand(speed,.45,1.15),
       angle:Math.random()*Math.PI*2,
       spin:rand(rotation.speed,.05,.25)*(Math.random()<.5?-1:1)
     });
   }
-  for(let i=0;i<count;i++) spawn();
+  for(let i=0;i<count;i++)spawn();
 
-  function draw(p) {
+  function draw(p){
     ctx.save();
     ctx.translate(p.x,p.y);
-    if(rotation.enable !== false) ctx.rotate(p.angle);
+    if(rotation.enable!==false)ctx.rotate(p.angle);
     ctx.globalAlpha=p.opacity;
     ctx.fillStyle=p.color;
     ctx.shadowColor=p.color;
-    ctx.shadowBlur=Math.max(1,p.size*2.4);
+    ctx.shadowBlur=Math.max(1,p.size*2);
     ctx.beginPath();
     ctx.moveTo(0,-p.size);
-    ctx.quadraticCurveTo(p.size*.25,-p.size*.25,p.size,0);
-    ctx.quadraticCurveTo(p.size*.25,p.size*.25,0,p.size);
-    ctx.quadraticCurveTo(-p.size*.25,p.size*.25,-p.size,0);
-    ctx.quadraticCurveTo(-p.size*.25,-p.size*.25,0,-p.size);
+    ctx.lineTo(p.size*.35,0);
+    ctx.lineTo(0,p.size);
+    ctx.lineTo(-p.size*.35,0);
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
   }
 
-  function tick(now) {
-    const dt=Math.min(40,now-last); last=now;
+  function tick(now){
+    const dt=Math.min(40,now-last);last=now;
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,width,height);
 
-    for(const p of particles) {
+    for(const p of particles){
       p.timer-=dt;
-
       if(p.state==="hidden"){
         p.opacity=0;
         if(p.timer<=0){p.state="fadeIn";p.timer=p.fade;}
-      } else if(p.state==="fadeIn"){
+      }else if(p.state==="fadeIn"){
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(q*q*(3-2*q));
-        if(p.timer<=0){p.state="visible";p.timer=rand(visible,1200,3000);p.opacity=p.max;}
-      } else if(p.state==="visible"){
+        if(p.timer<=0){p.state="visible";p.timer=rand(visible,1200,3000);}
+      }else if(p.state==="visible"){
         p.opacity=p.max;
         if(p.timer<=0){p.state="fadeOut";p.timer=p.fade;}
-      } else {
+      }else{
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
-          const a=anchorPoint();
-          p.ax=a.ax;p.ay=a.ay;p.x=a.x;p.y=a.y;
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
+          // Reuse a fresh point around the text's own bounding box.
+          const r=textEl.getBoundingClientRect(),w=r.width,h=r.height;
+          const side=Math.floor(Math.random()*4),gap=1+Math.random()*Math.max(1,Math.min(px,5));
+          if(side===0){p.x=Math.random()*w+px;p.y=py-gap;}
+          else if(side===1){p.x=w+px+gap;p.y=Math.random()*h+py;}
+          else if(side===2){p.x=Math.random()*w+px;p.y=h+py+gap;}
+          else{p.x=px-gap;p.y=Math.random()*h+py;}
+          p.bx=p.x;p.by=p.y;
           p.color=colors[Math.floor(Math.random()*colors.length)];
+          p.max=rand(opacity,.08,.85);
         }
       }
-
-      p.phase += p.orbitSpeed*dt*.001;
-      p.x = p.ax + Math.cos(p.phase)*p.orbit;
-      p.y = p.ay + Math.sin(p.phase*.87)*p.orbit;
-      if(rotation.enable !== false) p.angle += p.spin*dt*.001;
-      if(p.opacity>.001) draw(p);
+      p.phase+=p.driftSpeed*dt*.001;
+      p.x=p.bx+Math.cos(p.phase)*p.drift;
+      p.y=p.by+Math.sin(p.phase*.83)*p.drift;
+      if(rotation.enable!==false)p.angle+=p.spin*dt*.001;
+      if(p.opacity>.001)draw(p);
     }
     raf=requestAnimationFrame(tick);
   }
-
   raf=requestAnimationFrame(tick);
 
-  const resize=()=>place();
-  window.addEventListener("resize",resize,{passive:true});
-  window.addEventListener("scroll",resize,{passive:true});
-
+  const resizeHandler=()=>resize();
+  window.addEventListener("resize",resizeHandler,{passive:true});
   let ro=null;
-  if(window.ResizeObserver){
-    ro=new ResizeObserver(place);
-    ro.observe(textEl);
-  }
-  if(document.fonts?.ready) document.fonts.ready.then(place).catch(()=>{});
+  if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(textEl);}
+  if(document.fonts?.ready)document.fonts.ready.then(resize).catch(()=>{});
 
   customUsernameAnimations.set("tsparticles-username",{
-    canvas,raf,resize,ro,
+    canvas,raf,resizeHandler,ro,
     stop(){
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize",resize);
-      window.removeEventListener("scroll",resize);
-      if(ro) ro.disconnect();
+      window.removeEventListener("resize",resizeHandler);
+      if(ro)ro.disconnect();
       container.innerHTML="";
-      container.style.cssText="";
+      container.removeAttribute("style");
     }
   });
 }
