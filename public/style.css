@@ -619,3 +619,13 @@ body.edit-positions .pos-el .resize-handle {
   pointer-events: none;
   z-index: 1;
 }
+
+
+/* Username Effect: canvas is positioned by script.js over #el-username only. */
+#tsparticles-username {
+  position: absolute !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+}
