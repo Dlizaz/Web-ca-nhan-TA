@@ -1274,8 +1274,8 @@ function startCustomUsernameEffect(effectConfig={}) {
   // Do not use a fixed 170px canvas and do not wrap/move the H1. This makes the
   // effect automatically follow any username font, font-size, responsive width,
   // or text length without drifting away from the name.
-  const padX=Math.max(0,Number(layout.paddingX ?? 18));
-  const padY=Math.max(0,Number(layout.paddingY ?? 12));
+  const padX=Math.max(0,Number(layout.paddingX ?? 24));
+  const padY=Math.max(0,Number(layout.paddingY ?? 18));
   const offsetX=Number(layout.offsetX ?? 0);
   const offsetY=Number(layout.offsetY ?? 0);
 
@@ -1329,8 +1329,12 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   const particles=[];
   function spawn(){
+    // Keep particles away from the physical canvas edge so their glow/rotation
+    // never gets visibly chopped by the canvas boundary.
+    const edge=Math.max(4, Math.min(12, Number(size?.max ?? 2) * 2.5));
     particles.push({
-      x:Math.random()*cw,y:Math.random()*ch,
+      x:edge+Math.random()*Math.max(1,cw-edge*2),
+      y:edge+Math.random()*Math.max(1,ch-edge*2),
       size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
       max:rand(opacity,.08,.85),opacity:0,state:"hidden",
@@ -1373,7 +1377,9 @@ function startCustomUsernameEffect(effectConfig={}) {
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
-          p.x=Math.random()*cw;p.y=Math.random()*ch;
+          const edge=Math.max(4, Math.min(12, Number(size?.max ?? 2) * 2.5));
+          p.x=edge+Math.random()*Math.max(1,cw-edge*2);
+          p.y=edge+Math.random()*Math.max(1,ch-edge*2);
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
           p.color=colors[Math.floor(Math.random()*colors.length)];
           p.max=rand(opacity,.08,.85);
@@ -1382,7 +1388,11 @@ function startCustomUsernameEffect(effectConfig={}) {
       p.phase+=p.driftSpeed*dt*.001;
       p.x+=Math.cos(p.phase)*p.drift*dt*.001;
       p.y+=Math.sin(p.phase*.83)*p.drift*dt*.001;
-      if(p.x<0)p.x=cw;if(p.x>cw)p.x=0;if(p.y<0)p.y=ch;if(p.y>ch)p.y=0;
+      const edge=Math.max(4, Math.min(12, Number(size?.max ?? 2) * 2.5));
+      if(p.x<edge)p.x=cw-edge;
+      if(p.x>cw-edge)p.x=edge;
+      if(p.y<edge)p.y=ch-edge;
+      if(p.y>ch-edge)p.y=edge;
       if(rotation.enable!==false)p.angle+=p.spin*dt*.001;
       if(p.opacity>.001)draw(p);
     }
