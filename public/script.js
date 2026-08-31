@@ -1,4 +1,3 @@
-
 /* ============================================================
    USERNAME EFFECT — TEXT-WRAPPER ENGINE
    The effect belongs to the username element itself.
@@ -1329,17 +1328,27 @@ function startCustomUsernameEffect(effectConfig={}) {
   }
   resize();
 
+  // Rải hạt kiểu "quầng sáng" ngẫu nhiên quanh chữ, thay vì bám cứng vào 4 cạnh
+  // (bám cạnh sẽ luôn vẽ ra một hình chữ nhật/khung, giống guns.lol thì cần scatter
+  // tự nhiên: gần xa không đều, không tạo thành đường viền thẳng).
+  function haloPoint(w,h,px,py){
+    // Vùng lõi bên trong chữ cần tránh (không rải hạt đè hẳn lên giữa chữ),
+    // càng chữ to thì vùng lõi càng lớn theo tỉ lệ.
+    const coreX=w*0.16, coreY=h*0.16;
+    let x,y,tries=0;
+    do{
+      x=-px+Math.random()*(w+px*2);
+      y=-py+Math.random()*(h+py*2);
+      tries++;
+    }while(tries<6 && x>coreX && x<w-coreX && y>coreY && y<h-coreY);
+    return {x,y};
+  }
+
   const particles=[];
   function spawn(){
-    // Very small ring around the actual text box, not a large canvas region.
     const r=textEl.getBoundingClientRect();
     const w=Math.max(1,r.width),h=Math.max(1,r.height);
-    const side=Math.floor(Math.random()*4),gap=1+Math.random()*Math.max(1,Math.min(px,5));
-    let x,y;
-    if(side===0){x=Math.random()*w+px;y=py-gap;}
-    else if(side===1){x=w+px+gap;y=Math.random()*h+py;}
-    else if(side===2){x=Math.random()*w+px;y=h+py+gap;}
-    else{x=px-gap;y=Math.random()*h+py;}
+    const {x,y}=haloPoint(w,h,px,py);
 
     particles.push({
       x,y,bx:x,by:y,
@@ -1398,13 +1407,10 @@ function startCustomUsernameEffect(effectConfig={}) {
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
-          // Reuse a fresh point around the text's own bounding box.
-          const r=textEl.getBoundingClientRect(),w=r.width,h=r.height;
-          const side=Math.floor(Math.random()*4),gap=1+Math.random()*Math.max(1,Math.min(px,5));
-          if(side===0){p.x=Math.random()*w+px;p.y=py-gap;}
-          else if(side===1){p.x=w+px+gap;p.y=Math.random()*h+py;}
-          else if(side===2){p.x=Math.random()*w+px;p.y=h+py+gap;}
-          else{p.x=px-gap;p.y=Math.random()*h+py;}
+          // Sinh lại tại một điểm mới trong quầng sáng quanh chữ (không bám cạnh).
+          const r=textEl.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);
+          const np=haloPoint(w,h,px,py);
+          p.x=np.x;p.y=np.y;
           p.bx=p.x;p.by=p.y;
           p.color=colors[Math.floor(Math.random()*colors.length)];
           p.max=rand(opacity,.08,.85);
