@@ -1266,7 +1266,8 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   const container=document.getElementById("tsparticles-username");
   const textEl=document.getElementById("username-text");
-  if(!container||!textEl||effectConfig.enable===false)return;
+  const usernameEl=document.getElementById("el-username");
+  if(!container||!textEl||!usernameEl||effectConfig.enable===false)return;
 
   const colors=Array.isArray(effectConfig.colors)&&effectConfig.colors.length
     ?effectConfig.colors:["#FFFFFF","#C9B6FF","#FFBDE6"];
@@ -1283,15 +1284,20 @@ function startCustomUsernameEffect(effectConfig={}) {
   const px=Math.max(0,Number(area.paddingX)||8);
   const py=Math.max(0,Number(area.paddingY)||6);
 
-  // Container là con của <body>, định vị absolute theo toạ độ TÀI LIỆU
-  // (document), không phải theo textEl nữa — nên không còn bị ảnh hưởng bởi
-  // flex/inline/transform scale của các khối cha ở trên.
-  if(container.parentElement!==document.body){
-    document.body.appendChild(container);
-  }
-
+  // IMPORTANT:
+  // Keep the original #tsparticles-username element in its original HTML
+  // position. It is already a sibling of #username-text inside #el-username.
+  // The username element itself is position:fixed + transformed by the site's
+  // positioning system, so an absolute child inherits EXACTLY the same
+  // coordinate system. We do NOT append/remove it from <body>.
   container.style.cssText=[
     "position:absolute",
+    `left:${-px}px`,
+    `top:${-py}px`,
+    "right:auto",
+    "bottom:auto",
+    `width:calc(100% + ${px*2}px)`,
+    `height:calc(100% + ${py*2}px)`,
     "pointer-events:none",
     "overflow:visible",
     "margin:0",
@@ -1300,12 +1306,12 @@ function startCustomUsernameEffect(effectConfig={}) {
     "border:0",
     "box-shadow:none",
     "transform:none",
-    "z-index:5"
+    "z-index:0"
   ].join(";");
 
   container.innerHTML="";
   const canvas=document.createElement("canvas");
-  canvas.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;background:transparent;";
+  canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;background:transparent;";
   container.appendChild(canvas);
   const ctx=canvas.getContext("2d");
   if(!ctx)return;
@@ -1318,61 +1324,43 @@ function startCustomUsernameEffect(effectConfig={}) {
     return Number.isFinite(min)&&Number.isFinite(max)?min+Math.random()*(max-min):a+Math.random()*(b-a);
   }
 
-  // Đo vị trí chữ THẬT trên màn hình (đã tính cả mọi transform/scale của cha)
-  // rồi cộng scrollX/scrollY để ra toạ độ tuyệt đối trong tài liệu. Đây là
-  // NGUỒN DUY NHẤT xác định vị trí quầng kim tuyến — không còn qua % hay calc()
-  // của bất kỳ phần tử cha nào nữa.
-  function measure(){
-    const r=textEl.getBoundingClientRect();
-    return {
-      left: r.left + window.scrollX,
-      top: r.top + window.scrollY,
-      w: Math.max(1,r.width),
-      h: Math.max(1,r.height)
-    };
-  }
-
   function resize(){
-    const m=measure();
-    width=m.w+px*2;
-    height=m.h+py*2;
+    // The containing block is #el-username. Its width/height track the actual
+    // main username line; bio and other profile elements are outside this box.
+    const r=usernameEl.getBoundingClientRect();
+    const w=Math.max(1,r.width),h=Math.max(1,r.height);
+    width=w+px*2;
+    height=h+py*2;
     dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.ceil(width*dpr);
     canvas.height=Math.ceil(height*dpr);
-    container.style.left=`${m.left-px}px`;
-    container.style.top=`${m.top-py}px`;
-    container.style.width=`${width}px`;
-    container.style.height=`${height}px`;
+    canvas.style.width=`${width}px`;
+    canvas.style.height=`${height}px`;
   }
   resize();
 
-  // Rải hạt kiểu "quầng sáng" ngẫu nhiên quanh chữ, thay vì bám cứng vào 4 cạnh
-  // (bám cạnh sẽ luôn vẽ ra một hình chữ nhật/khung, giống guns.lol thì cần scatter
-  // tự nhiên: gần xa không đều, không tạo thành đường viền thẳng).
-  function haloPoint(w,h,px,py){
-    // Toạ độ trả về là toạ độ CANVAS thật (0,0 = góc trên-trái canvas), KHÔNG phải
-    // toạ độ tương đối theo chữ nữa — để draw() khỏi phải cộng/trừ px,py lần nữa,
-    // tránh lệch do quên cộng bù (đây chính là bug cũ gây kim tuyến dồn lệch 1 bên).
-    // Canvas rộng w+2px, cao h+2py; vùng chữ nằm ở [px, px+w] x [py, py+h].
-    const canvasW=w+px*2, canvasH=h+py*2;
-    const coreX0=px+w*0.16, coreX1=px+w*0.84;
-    const coreY0=py+h*0.16, coreY1=py+h*0.84;
+  // Scatter only in a thin halo around the actual username box.
+  // The center is excluded so particles don't cover the letters.
+  function haloPoint(){
+    const r=usernameEl.getBoundingClientRect();
+    const w=Math.max(1,r.width),h=Math.max(1,r.height);
+    const cw=w+px*2,ch=h+py*2;
+    const innerX0=px+w*.18,innerX1=px+w*.82;
+    const innerY0=py+h*.18,innerY1=py+h*.82;
     let x,y,tries=0;
     do{
-      x=Math.random()*canvasW;
-      y=Math.random()*canvasH;
+      x=Math.random()*cw;
+      y=Math.random()*ch;
       tries++;
-    }while(tries<6 && x>coreX0 && x<coreX1 && y>coreY0 && y<coreY1);
+    }while(tries<12 && x>innerX0&&x<innerX1&&y>innerY0&&y<innerY1);
     return {x,y};
   }
 
   const particles=[];
   function spawn(){
-    const m=measure();
-    const {x,y}=haloPoint(m.w,m.h,px,py);
-
+    const p=haloPoint();
     particles.push({
-      x,y,bx:x,by:y,
+      x:p.x,y:p.y,bx:p.x,by:p.y,
       size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
       max:rand(opacity,.08,.85),
@@ -1390,8 +1378,6 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   function draw(p){
     ctx.save();
-    // p.x/p.y đã là toạ độ canvas thật (xem haloPoint), dùng thẳng không cần
-    // cộng/trừ gì thêm.
     ctx.translate(p.x,p.y);
     if(rotation.enable!==false)ctx.rotate(p.angle);
     ctx.globalAlpha=p.opacity;
@@ -1429,12 +1415,9 @@ function startCustomUsernameEffect(effectConfig={}) {
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
+          const q2=haloPoint();
+          p.x=q2.x;p.y=q2.y;p.bx=q2.x;p.by=q2.y;
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
-          // Sinh lại tại một điểm mới trong quầng sáng quanh chữ (không bám cạnh).
-          const m=measure();
-          const np=haloPoint(m.w,m.h,px,py);
-          p.x=np.x;p.y=np.y;
-          p.bx=p.x;p.by=p.y;
           p.color=colors[Math.floor(Math.random()*colors.length)];
           p.max=rand(opacity,.08,.85);
         }
@@ -1449,11 +1432,10 @@ function startCustomUsernameEffect(effectConfig={}) {
   }
   raf=requestAnimationFrame(tick);
 
-  const resizeHandler=()=>resize();
+  const resizeHandler=resize;
   window.addEventListener("resize",resizeHandler,{passive:true});
-  window.addEventListener("scroll",resizeHandler,{passive:true});
   let ro=null;
-  if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(textEl);}
+  if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(usernameEl);}
   if(document.fonts?.ready)document.fonts.ready.then(resize).catch(()=>{});
 
   customUsernameAnimations.set("tsparticles-username",{
@@ -1461,11 +1443,11 @@ function startCustomUsernameEffect(effectConfig={}) {
     stop(){
       cancelAnimationFrame(raf);
       window.removeEventListener("resize",resizeHandler);
-      window.removeEventListener("scroll",resizeHandler);
       if(ro)ro.disconnect();
+      // NEVER remove #tsparticles-username from DOM.
+      // It is part of index.html and must survive config reloads.
       container.innerHTML="";
-      container.removeAttribute("style");
-      if(container.parentElement===document.body) container.remove();
+      container.style.cssText="";
     }
   });
 }
