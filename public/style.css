@@ -128,17 +128,6 @@ body.has-custom-cursor * {
   z-index: 3;
   opacity: 0;
   transition: opacity 0.6s ease;
-  /* Không scale toàn stage. Browser zoom/responsive viewport tự xử lý việc scale.
-     Giữ stage ở đúng hệ tọa độ viewport để các .pos-el không bị co nhỏ/xô lệch. */
-  --layout-scale: 1;
-  transform: none;
-  transform-origin: 50% 50%;
-}
-
-/* Admin editor thao tác theo viewport thật, không scale canvas chỉnh vị trí. */
-body.edit-positions #stage {
-  --layout-scale: 1 !important;
-  transform: none !important;
 }
 
 #stage.visible { opacity: 1; }
