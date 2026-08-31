@@ -624,29 +624,13 @@ body.edit-positions .pos-el .resize-handle {
   z-index: 1;
 }
 
-/* Username effect is a child of the exact username wrapper. */
-.username-effect-wrapper {
-  position: relative !important;
-  display: inline-block !important;
-  width: fit-content !important;
-  height: fit-content !important;
-  overflow: visible !important;
-  isolation: isolate !important;
-}
-
-.username-effect-canvas {
-  position: absolute !important;
-  pointer-events: none !important;
-  overflow: visible !important;
-  z-index: 2 !important;
-  margin: 0 !important;
-  transform: none !important;
-}
-
-/* Username particles: layout-neutral overlay controlled by script.js. */
+/* Username effect: invisible overlay; particles are anchored to glyphs. */
 #tsparticles-username {
   pointer-events: none !important;
   overflow: visible !important;
   margin: 0 !important;
   padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
