@@ -69,7 +69,7 @@ async function loadSiteSettings() {
   applyGlow();
   applySparkleEffects();
   applyCursorParticlesConfig();
-  applyUsernameParticlesConfig();
+  await applyUsernameParticlesConfig();
   applyPageParticlesConfig();
   applyTextStyles();
   applyDiscord();
@@ -914,6 +914,7 @@ let pageEffectMode = 'default';
 let tsParticlesLoadingPromise = null;
 const customButterflyCanvases = new Map();
 const customButterflyAnimations = new Map();
+const customUsernameAnimations = new Map();
 
 function ensureTsParticlesLoaded() {
   if (window.tsParticles) return Promise.resolve();
@@ -938,8 +939,48 @@ function destroyCustomButterflies(containerId) {
   customButterflyCanvases.delete(containerId);
 }
 
+function destroyCustomUsernameEffect() {
+  const state = customUsernameAnimations.get('tsparticles-username');
+  if (!state) return;
+  if (state.raf) cancelAnimationFrame(state.raf);
+  if (state.resizeObserver) state.resizeObserver.disconnect();
+  if (state.canvas) state.canvas.remove();
+  customUsernameAnimations.delete('tsparticles-username');
+}
+
+function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rotation); ctx.globalAlpha=alpha; ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=Math.max(2,size*3.2);
+  ctx.beginPath(); ctx.moveTo(0,-size); ctx.quadraticCurveTo(size*.28,-size*.28,size,0); ctx.quadraticCurveTo(size*.28,size*.28,0,size); ctx.quadraticCurveTo(-size*.28,size*.28,-size,0); ctx.quadraticCurveTo(-size*.28,-size*.28,0,-size); ctx.fill(); ctx.restore();
+}
+
+function startCustomUsernameEffect(effectConfig={}) {
+  destroyCustomUsernameEffect();
+  const container=document.getElementById('tsparticles-username'); if(!container || effectConfig.enable===false) return;
+  const universal=effectConfig.universal&&typeof effectConfig.universal==='object'?effectConfig.universal:{};
+  const colors=normalizeColors(effectConfig.colors??universal.colors,['#FFFFFF','#C9B6FF','#FFBDE6']);
+  const sizeRange=randomRange(effectConfig.size??universal.size,1,3);
+  const opacityRange=randomRange(effectConfig.opacity??universal.opacity,.18,.9);
+  const count=Math.max(1,Math.round(Number(effectConfig.count??55)));
+  const speedRange=randomRange(effectConfig.speed??universal.move?.speed,.08,.25);
+  const fadeRange=randomRange(effectConfig.fadeTime??universal.fade?.time,1800,3200);
+  const visibleRange=randomRange(effectConfig.visibleTime??universal.timing?.visible,1400,3600);
+  const hiddenRange=randomRange(effectConfig.hiddenTime??universal.timing?.hidden,900,2400);
+  const rot=effectConfig.rotation??universal.rotation??{}; const rotSpeed=randomRange(rot.speed,.05,.25); const rotEnabled=rot.enable!==false;
+  const canvas=document.createElement('canvas'); canvas.className='custom-username-effect-canvas'; container.appendChild(canvas); const ctx=canvas.getContext('2d'); const particles=[]; let width=1,height=1;
+  function resize(){const r=container.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2); width=Math.max(1,r.width); height=Math.max(1,r.height); canvas.width=Math.ceil(width*dpr); canvas.height=Math.ceil(height*dpr); canvas.style.width=width+'px'; canvas.style.height=height+'px'; ctx.setTransform(dpr,0,0,dpr,0,0);}
+  resize(); const resizeObserver=new ResizeObserver(resize); resizeObserver.observe(container);
+  function phase(){const f=randomBetween(fadeRange),q=Math.random(); if(q<.28)return {state:'hidden',timer:randomBetween(hiddenRange),fade:f}; if(q<.52)return {state:'fadeIn',timer:f,fade:f}; if(q<.82)return {state:'visible',timer:randomBetween(visibleRange),fade:f}; return {state:'fadeOut',timer:f,fade:f};}
+  function spawn(){const edge=Math.random(); let x,y; if(edge<.25){x=Math.random()*width;y=Math.random()*height*.16;} else if(edge<.5){x=Math.random()*width;y=height*(.84+Math.random()*.16);} else if(edge<.75){x=Math.random()*width*.16;y=Math.random()*height;} else {x=width*(.84+Math.random()*.16);y=Math.random()*height;} const ph=phase(); particles.push({x,y,baseX:x,baseY:y,drift:Math.random()*Math.PI*2,driftSpeed:randomBetween(speedRange),driftRadius:2+Math.random()*7,size:randomBetween(sizeRange),color:colors[Math.floor(Math.random()*colors.length)],opacity:0,targetOpacity:randomBetween(opacityRange),state:ph.state,timer:ph.timer,fade:ph.fade,rotation:Math.random()*Math.PI*2,rotationDirection:Math.random()<.5?-1:1,rotationSpeed:randomBetween(rotSpeed)});}
+  for(let i=0;i<count;i++)spawn();
+  function update(p,dt){p.timer-=dt; if(p.state==='hidden'){p.opacity=0;if(p.timer<=0){p.state='fadeIn';p.fade=randomBetween(fadeRange);p.timer=p.fade;}} else if(p.state==='fadeIn'){const q=Math.max(0,Math.min(1,1-p.timer/p.fade)),e=q*q*(3-2*q);p.opacity=p.targetOpacity*e;if(p.timer<=0){p.state='visible';p.timer=randomBetween(visibleRange);p.opacity=p.targetOpacity;}} else if(p.state==='visible'){p.opacity=p.targetOpacity;if(p.timer<=0){p.state='fadeOut';p.fade=randomBetween(fadeRange);p.timer=p.fade;}} else {const q=Math.max(0,Math.min(1,1-p.timer/p.fade)),e=q*q*(3-2*q);p.opacity=p.targetOpacity*(1-e);if(p.timer<=0){p.state='hidden';p.timer=randomBetween(hiddenRange);p.opacity=0;p.targetOpacity=randomBetween(opacityRange);p.color=colors[Math.floor(Math.random()*colors.length)];}} p.drift+=p.driftSpeed*dt*.001;p.x=p.baseX+Math.cos(p.drift)*p.driftRadius;p.y=p.baseY+Math.sin(p.drift*.83)*p.driftRadius;if(rotEnabled)p.rotation+=p.rotationDirection*p.rotationSpeed*dt*.001;}
+  let last=performance.now(); const state={canvas,resizeObserver,raf:0}; customUsernameAnimations.set('tsparticles-username',state);
+  function frame(now){if(!customUsernameAnimations.has('tsparticles-username'))return;const dt=Math.min(40,now-last);last=now;ctx.clearRect(0,0,width,height);for(const p of particles){update(p,dt);if(p.opacity>.001)drawUsernameSparkle(ctx,p.x,p.y,p.size,p.color,p.opacity,p.rotation);}state.raf=requestAnimationFrame(frame);}
+  state.raf=requestAnimationFrame(frame);
+}
+
 function destroyTsParticlesContainer(containerId) {
   destroyCustomButterflies(containerId);
+  if (containerId === 'tsparticles-username') destroyCustomUsernameEffect();
   if (window.tsParticles && typeof window.tsParticles.dom === 'function') {
     const existing = window.tsParticles.dom().find((c) => c.id === containerId);
     if (existing) existing.destroy();
@@ -1438,12 +1479,11 @@ function applyCursorParticlesConfig() {
   );
 }
 
-function applyUsernameParticlesConfig() {
-  return applyCustomParticles(
-    'tsparticles-username',
-    siteSettings && siteSettings.usernameSparkleConfig,
-    (mode) => { usernameEffectMode = mode; },
-  );
+async function applyUsernameParticlesConfig() {
+  const raw = (siteSettings && siteSettings.usernameSparkleConfig || '').trim();
+  if (!raw) { usernameEffectMode='default'; destroyTsParticlesContainer('tsparticles-username'); return; }
+  try { const config=JSON.parse(raw); if(config.usernameEffect && typeof config.usernameEffect==='object'){ usernameEffectMode='custom'; destroyTsParticlesContainer('tsparticles-username'); startCustomUsernameEffect(config.usernameEffect); return; } } catch {}
+  return applyCustomParticles('tsparticles-username',raw,(mode)=>{usernameEffectMode=mode;});
 }
 
 function applyPageParticlesConfig() {
