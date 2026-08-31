@@ -294,14 +294,14 @@ body.edit-positions .pos-el .resize-handle {
 /* Container cho hiệu ứng kim tuyến quanh tên khi admin dán code cấu hình tsParticles riêng
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
 .tsparticles-username {
-  /* KHÔNG set position/top/left/width/height/z-index ở đây nữa: để JS
-     (startCustomUsernameEffect trong script.js) toàn quyền tính toán theo
-     area.paddingX/paddingY trong JSON config. Từ bản SPARKLE_COORD_FIX_V3, JS
-     gắn container này thẳng vào <body> và tự set z-index:5 (để nổi trên #stage
-     có z-index:3) — nếu để z-index:0 !important ở đây như cũ, kim tuyến sẽ bị
-     #stage che khuất mất, không thấy gì cả. */
+  position: absolute;
   pointer-events: none !important;
   overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .custom-username-effect-canvas {
