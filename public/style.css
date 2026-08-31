@@ -293,17 +293,6 @@ body.edit-positions .pos-el .resize-handle {
 
 /* Container cho hiệu ứng kim tuyến quanh tên khi admin dán code cấu hình tsParticles riêng
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
-.tsparticles-username {
-  position: absolute;
-  pointer-events: none !important;
-  overflow: visible !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-
 .custom-username-effect-canvas {
   position: absolute;
   inset: 0;
@@ -634,12 +623,31 @@ body.edit-positions .pos-el .resize-handle {
   box-shadow: none !important;
 }
 
-/* Username Effect: the particle layer is absolutely positioned inside #username-text. */
-#username-text { position: relative; }
+
+/* Username custom effect: independent transparent layout centered on the username block. */
+#el-username { position: relative; }
 #tsparticles-username {
+  position: absolute !important;
   pointer-events: none !important;
+  overflow: visible !important;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+  padding: 0 !important;
+  z-index: 1 !important;
+}
+#username-text { position: relative; z-index: 2; }
+
+/* Final username custom-effect anchor: same box as #el-username, never fixed-size. */
+#el-username { position: relative; }
+#tsparticles-username {
+  position: absolute !important;
+  pointer-events: none !important;
   overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
 }
