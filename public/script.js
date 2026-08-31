@@ -676,6 +676,15 @@ async function enterSite() {
     stage.classList.add('visible');
     refreshDiscordMarquee();
     clampPositionsToViewport();
+    if (usernameEffectMode === 'custom') {
+      const raw = (siteSettings && siteSettings.usernameSparkleConfig || '').trim();
+      try {
+        const cfg = JSON.parse(raw);
+        if (cfg.usernameEffect && typeof cfg.usernameEffect === 'object') {
+          startCustomUsernameEffect(cfg.usernameEffect);
+        }
+      } catch {}
+    }
   });
 
   audio.volume = 0.4;
@@ -945,6 +954,7 @@ function destroyCustomUsernameEffect() {
   if (state.raf) cancelAnimationFrame(state.raf);
   if (state.resizeObserver) state.resizeObserver.disconnect();
   if (state.canvas) state.canvas.remove();
+  if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
   customUsernameAnimations.delete('tsparticles-username');
 }
 
@@ -967,13 +977,27 @@ function startCustomUsernameEffect(effectConfig={}) {
   const hiddenRange=randomRange(effectConfig.hiddenTime??universal.timing?.hidden,900,2400);
   const rot=effectConfig.rotation??universal.rotation??{}; const rotSpeed=randomRange(rot.speed,.05,.25); const rotEnabled=rot.enable!==false;
   const canvas=document.createElement('canvas'); canvas.className='custom-username-effect-canvas'; container.appendChild(canvas); const ctx=canvas.getContext('2d'); const particles=[]; let width=1,height=1;
-  function resize(){const r=container.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2); width=Math.max(1,r.width); height=Math.max(1,r.height); canvas.width=Math.ceil(width*dpr); canvas.height=Math.ceil(height*dpr); canvas.style.width=width+'px'; canvas.style.height=height+'px'; ctx.setTransform(dpr,0,0,dpr,0,0);}
-  resize(); const resizeObserver=new ResizeObserver(resize); resizeObserver.observe(container);
+  function resize(){
+    const r=container.getBoundingClientRect();
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    // Khi #stage còn display:none, kích thước container có thể = 0. Đừng khóa canvas ở 0;
+    // resize lại ngay khi stage hiện ra.
+    width=Math.max(1,r.width);
+    height=Math.max(1,r.height);
+    canvas.width=Math.max(1,Math.ceil(width*dpr));
+    canvas.height=Math.max(1,Math.ceil(height*dpr));
+    canvas.style.width=width+'px';
+    canvas.style.height=height+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize();
+  const resizeObserver=new ResizeObserver(resize); resizeObserver.observe(container);
+  window.addEventListener('resize',resize);
   function phase(){const f=randomBetween(fadeRange),q=Math.random(); if(q<.28)return {state:'hidden',timer:randomBetween(hiddenRange),fade:f}; if(q<.52)return {state:'fadeIn',timer:f,fade:f}; if(q<.82)return {state:'visible',timer:randomBetween(visibleRange),fade:f}; return {state:'fadeOut',timer:f,fade:f};}
   function spawn(){const edge=Math.random(); let x,y; if(edge<.25){x=Math.random()*width;y=Math.random()*height*.16;} else if(edge<.5){x=Math.random()*width;y=height*(.84+Math.random()*.16);} else if(edge<.75){x=Math.random()*width*.16;y=Math.random()*height;} else {x=width*(.84+Math.random()*.16);y=Math.random()*height;} const ph=phase(); particles.push({x,y,baseX:x,baseY:y,drift:Math.random()*Math.PI*2,driftSpeed:randomBetween(speedRange),driftRadius:2+Math.random()*7,size:randomBetween(sizeRange),color:colors[Math.floor(Math.random()*colors.length)],opacity:0,targetOpacity:randomBetween(opacityRange),state:ph.state,timer:ph.timer,fade:ph.fade,rotation:Math.random()*Math.PI*2,rotationDirection:Math.random()<.5?-1:1,rotationSpeed:randomBetween(rotSpeed)});}
   for(let i=0;i<count;i++)spawn();
   function update(p,dt){p.timer-=dt; if(p.state==='hidden'){p.opacity=0;if(p.timer<=0){p.state='fadeIn';p.fade=randomBetween(fadeRange);p.timer=p.fade;}} else if(p.state==='fadeIn'){const q=Math.max(0,Math.min(1,1-p.timer/p.fade)),e=q*q*(3-2*q);p.opacity=p.targetOpacity*e;if(p.timer<=0){p.state='visible';p.timer=randomBetween(visibleRange);p.opacity=p.targetOpacity;}} else if(p.state==='visible'){p.opacity=p.targetOpacity;if(p.timer<=0){p.state='fadeOut';p.fade=randomBetween(fadeRange);p.timer=p.fade;}} else {const q=Math.max(0,Math.min(1,1-p.timer/p.fade)),e=q*q*(3-2*q);p.opacity=p.targetOpacity*(1-e);if(p.timer<=0){p.state='hidden';p.timer=randomBetween(hiddenRange);p.opacity=0;p.targetOpacity=randomBetween(opacityRange);p.color=colors[Math.floor(Math.random()*colors.length)];}} p.drift+=p.driftSpeed*dt*.001;p.x=p.baseX+Math.cos(p.drift)*p.driftRadius;p.y=p.baseY+Math.sin(p.drift*.83)*p.driftRadius;if(rotEnabled)p.rotation+=p.rotationDirection*p.rotationSpeed*dt*.001;}
-  let last=performance.now(); const state={canvas,resizeObserver,raf:0}; customUsernameAnimations.set('tsparticles-username',state);
+  let last=performance.now(); const state={canvas,resizeObserver,resizeHandler:resize,raf:0}; customUsernameAnimations.set('tsparticles-username',state);
   function frame(now){if(!customUsernameAnimations.has('tsparticles-username'))return;const dt=Math.min(40,now-last);last=now;ctx.clearRect(0,0,width,height);for(const p of particles){update(p,dt);if(p.opacity>.001)drawUsernameSparkle(ctx,p.x,p.y,p.size,p.color,p.opacity,p.rotation);}state.raf=requestAnimationFrame(frame);}
   state.raf=requestAnimationFrame(frame);
 }
@@ -1482,7 +1506,25 @@ function applyCursorParticlesConfig() {
 async function applyUsernameParticlesConfig() {
   const raw = (siteSettings && siteSettings.usernameSparkleConfig || '').trim();
   if (!raw) { usernameEffectMode='default'; destroyTsParticlesContainer('tsparticles-username'); return; }
-  try { const config=JSON.parse(raw); if(config.usernameEffect && typeof config.usernameEffect==='object'){ usernameEffectMode='custom'; destroyTsParticlesContainer('tsparticles-username'); startCustomUsernameEffect(config.usernameEffect); return; } } catch {}
+  try {
+    const config=JSON.parse(raw);
+    if(config.usernameEffect && typeof config.usernameEffect==='object'){
+      usernameEffectMode='custom';
+      destroyTsParticlesContainer('tsparticles-username');
+      const launch=()=>{
+        if (usernameEffectMode !== 'custom') return;
+        startCustomUsernameEffect(config.usernameEffect);
+      };
+      // loadSiteSettings chạy trước khi #stage được hiện. Khởi động lại sau layout để
+      // canvas có đúng kích thước chữ tên thay vì bị tạo với width/height = 0.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(launch), {once:true});
+      } else {
+        requestAnimationFrame(launch);
+      }
+      return;
+    }
+  } catch {}
   return applyCustomParticles('tsparticles-username',raw,(mode)=>{usernameEffectMode=mode;});
 }
 
