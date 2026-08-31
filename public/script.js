@@ -743,11 +743,43 @@ function clampPositionsToViewport() {
   });
 }
 
+// ---------- Khóa layout desktop / scale đồng bộ ----------
+// Thiết kế chuẩn lấy theo canvas 1920x1080. Khi viewport nhỏ hơn (kể cả do
+// Ctrl +/- zoom), toàn bộ #stage được scale cùng một tỉ lệ thay vì từng khối
+// tự xô lệch theo kích thước riêng. Vị trí top/left % vẫn giữ nguyên.
+const DESIGN_WIDTH = 1920;
+const DESIGN_HEIGHT = 1080;
+
+function updateStageLayoutScale() {
+  const stageEl = document.getElementById('stage');
+  if (!stageEl) return;
+
+  // Trong trình chỉnh vị trí, giữ canvas 1:1 để thao tác kéo-thả chính xác.
+  if (EDIT_POSITIONS) {
+    stageEl.style.setProperty('--layout-scale', '1');
+    return;
+  }
+
+  const vw = Math.max(1, window.innerWidth);
+  const vh = Math.max(1, window.innerHeight);
+  const scale = Math.min(vw / DESIGN_WIDTH, vh / DESIGN_HEIGHT);
+
+  // Không phóng to vượt thiết kế gốc; chỉ thu nhỏ khi viewport nhỏ hơn 1920x1080.
+  stageEl.style.setProperty('--layout-scale', Math.min(1, scale).toFixed(5));
+}
+
 let clampResizeTimer = null;
-window.addEventListener('resize', () => {
+function handleViewportResize() {
+  updateStageLayoutScale();
   clearTimeout(clampResizeTimer);
-  clampResizeTimer = setTimeout(clampPositionsToViewport, 120);
-});
+  // Chỉ clamp trên màn hình rất nhỏ. Desktop/zoom không được tự ý dịch từng phần tử.
+  if (window.innerWidth <= 640) {
+    clampResizeTimer = setTimeout(clampPositionsToViewport, 120);
+  }
+}
+
+updateStageLayoutScale();
+window.addEventListener('resize', handleViewportResize, { passive: true });
 
 // ---------- Kích thước & màu khung tự chỉnh ----------
 const SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
@@ -960,6 +992,7 @@ async function enterSite() {
   await settingsReady;
   overlay.classList.add('fade-out');
   stage.classList.remove('hidden');
+  updateStageLayoutScale();
   requestAnimationFrame(() => {
     stage.classList.add('visible');
     refreshDiscordMarquee();
@@ -1237,13 +1270,8 @@ function destroyCustomButterflies(containerId) {
 }
 
 function destroyCustomUsernameEffect() {
-  const state = customUsernameAnimations.get('tsparticles-username');
-  if (!state) return;
-  if (state.raf) cancelAnimationFrame(state.raf);
-  if (state.resizeObserver) state.resizeObserver.disconnect();
-  if (state.canvas) state.canvas.remove();
-  if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
-  customUsernameAnimations.delete('tsparticles-username');
+  // Custom username effect is intentionally kept alive here.
+  // Do not remove its canvas after starting it.
 }
 
 function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
