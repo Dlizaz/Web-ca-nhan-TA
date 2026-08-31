@@ -1252,8 +1252,6 @@ function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
 }
 
 function startCustomUsernameEffect(effectConfig={}) {
-  // Safety: this function ONLY owns the username particle layer.
-  // It never touches the page enter screen, profile visibility, or body.
   destroyCustomUsernameEffect();
 
   const container = document.getElementById("tsparticles-username");
@@ -1262,7 +1260,7 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   const colors = Array.isArray(effectConfig.colors) && effectConfig.colors.length
     ? effectConfig.colors : ["#FFFFFF", "#C9B6FF", "#FFBDE6"];
-  const count = Math.max(1, Math.min(120, Number(effectConfig.count) || 45));
+  const count = Math.max(1, Math.min(140, Number(effectConfig.count) || 45));
   const size = effectConfig.size || {min:.8,max:1.8};
   const opacity = effectConfig.opacity || {min:.08,max:.85};
   const area = effectConfig.area || {paddingX:10,paddingY:8};
@@ -1272,11 +1270,9 @@ function startCustomUsernameEffect(effectConfig={}) {
   const hidden = effectConfig.hiddenTime || {min:700,max:1800};
   const rotation = effectConfig.rotation || {};
 
-  const px = Number.isFinite(Number(area.paddingX)) ? Number(area.paddingX) : 10;
-  const py = Number.isFinite(Number(area.paddingY)) ? Number(area.paddingY) : 8;
+  const px = Number.isFinite(Number(area.paddingX)) ? Number(area.paddingX) : 8;
+  const py = Number.isFinite(Number(area.paddingY)) ? Number(area.paddingY) : 6;
 
-  // Keep the original DOM structure. No wrapper, no fixed positioning, no
-  // changes to the page layout.
   container.innerHTML = "";
   container.style.position = "absolute";
   container.style.pointerEvents = "none";
@@ -1286,80 +1282,127 @@ function startCustomUsernameEffect(effectConfig={}) {
   container.style.zIndex = "0";
 
   const canvas = document.createElement("canvas");
-  canvas.style.position = "absolute";
-  canvas.style.pointerEvents = "none";
-  canvas.style.left = "0";
-  canvas.style.top = "0";
-  canvas.style.width = "100%";
-  canvas.style.height = "100%";
-  canvas.style.margin = "0";
-  canvas.style.padding = "0";
-  canvas.style.overflow = "visible";
+  canvas.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;display:block;background:transparent;";
   container.appendChild(canvas);
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  let width=1, height=1, dpr=1;
-  let raf=0, last=performance.now();
+  let width=1, height=1, dpr=1, raf=0, last=performance.now();
+  let anchors=[];
 
-  function rand(v, fallbackMin, fallbackMax) {
+  function rand(v, a, b) {
     if (typeof v === "number") return v;
-    const a=Number(v?.min); const b=Number(v?.max);
-    if (Number.isFinite(a) && Number.isFinite(b)) return a + Math.random()*(b-a);
-    return fallbackMin + Math.random()*(fallbackMax-fallbackMin);
+    const min=Number(v?.min), max=Number(v?.max);
+    if(Number.isFinite(min)&&Number.isFinite(max)) return min+Math.random()*(max-min);
+    return a+Math.random()*(b-a);
+  }
+
+  // Build anchors from the ACTUAL GLYPHS of "Milky Dli".
+  // This is the key difference: particles are attached to letters,
+  // not distributed around a rectangular canvas.
+  function buildAnchors() {
+    const text = textEl.textContent || "";
+    const textRect = textEl.getBoundingClientRect();
+    anchors = [];
+
+    const range = document.createRange();
+    const node = textEl.firstChild;
+
+    if (node && node.nodeType === Node.TEXT_NODE && text.length) {
+      for (let i=0;i<text.length;i++) {
+        if (text[i].trim()==="") continue;
+        try {
+          range.setStart(node,i);
+          range.setEnd(node,i+1);
+          const r = range.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            anchors.push({
+              x: r.left - textRect.left + r.width/2,
+              y: r.top - textRect.top + r.height/2,
+              w: r.width,
+              h: r.height
+            });
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!anchors.length) {
+      anchors.push({
+        x: textRect.width/2,
+        y: textRect.height/2,
+        w: textRect.width,
+        h: textRect.height
+      });
+    }
   }
 
   function place() {
     const textRect = textEl.getBoundingClientRect();
     const parentRect = container.parentElement.getBoundingClientRect();
 
-    // Container is positioned relative to its actual parent using only the
-    // username text's box.
-    const left = textRect.left - parentRect.left - px;
-    const top = textRect.top - parentRect.top - py;
-    width = Math.max(1, textRect.width + px*2);
-    height = Math.max(1, textRect.height + py*2);
+    // The transparent canvas is exactly the text box + a tiny invisible margin.
+    // It does not use the bio/profile dimensions.
+    container.style.left = `${textRect.left-parentRect.left-px}px`;
+    container.style.top = `${textRect.top-parentRect.top-py}px`;
+    width=Math.max(1,textRect.width+px*2);
+    height=Math.max(1,textRect.height+py*2);
+    container.style.width=`${width}px`;
+    container.style.height=`${height}px`;
+    container.style.right="auto";
+    container.style.bottom="auto";
+    container.style.transform="none";
 
-    container.style.left = `${left}px`;
-    container.style.top = `${top}px`;
-    container.style.width = `${width}px`;
-    container.style.height = `${height}px`;
-    container.style.right = "auto";
-    container.style.bottom = "auto";
-    container.style.transform = "none";
+    dpr=Math.min(2,window.devicePixelRatio||1);
+    canvas.width=Math.ceil(width*dpr);
+    canvas.height=Math.ceil(height*dpr);
+    canvas.style.width=`${width}px`;
+    canvas.style.height=`${height}px`;
 
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.ceil(width*dpr);
-    canvas.height = Math.ceil(height*dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    buildAnchors();
   }
 
   place();
 
+  function anchorPoint() {
+    const a=anchors[Math.floor(Math.random()*anchors.length)];
+    const side=Math.floor(Math.random()*8);
+
+    // Spawn close to the actual letter edge, 2–7px away.
+    const gap=2+Math.random()*Math.max(2,Math.min(px,7));
+    let x=a.x, y=a.y;
+
+    if(side===0){x=a.x;y=a.y-a.h/2-gap;}
+    else if(side===1){x=a.x+a.w/2+gap;y=a.y;}
+    else if(side===2){x=a.x;y=a.y+a.h/2+gap;}
+    else if(side===3){x=a.x-a.w/2-gap;y=a.y;}
+    else {
+      const ang=Math.random()*Math.PI*2;
+      const radius=Math.max(a.w,a.h)/2+gap;
+      x=a.x+Math.cos(ang)*radius;
+      y=a.y+Math.sin(ang)*radius;
+    }
+    return {x:x+px,y:y+py,ax:a.x+px,ay:a.y+py};
+  }
+
   const particles=[];
   function spawn() {
-    const side=Math.floor(Math.random()*4);
-    let x,y;
-    if(side===0){x=Math.random()*width;y=Math.random()*py;}
-    else if(side===1){x=width-px+Math.random()*px;y=Math.random()*height;}
-    else if(side===2){x=Math.random()*width;y=height-py+Math.random()*py;}
-    else{x=Math.random()*px;y=Math.random()*height;}
-
+    const p=anchorPoint();
     particles.push({
-      x,y,bx:x,by:y,
-      size:rand(size,.8,1.8),
+      x:p.x,y:p.y,ax:p.ax,ay:p.ay,
+      size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
       max:rand(opacity,.08,.85),
       opacity:0,
       state:"hidden",
       timer:rand(hidden,700,1800),
       fade:rand(fade,1800,3200),
+      phase:Math.random()*Math.PI*2,
+      orbit:1.0+Math.random()*3.5,
+      orbitSpeed:rand(speed,.45,1.15),
       angle:Math.random()*Math.PI*2,
-      spin:rand(rotation.speed,.05,.25)*(Math.random()<.5?-1:1),
-      drift:Math.random()*Math.PI*2,
-      driftSpeed:rand(speed,.45,1.15)
+      spin:rand(rotation.speed,.05,.25)*(Math.random()<.5?-1:1)
     });
   }
   for(let i=0;i<count;i++) spawn();
@@ -1370,16 +1413,14 @@ function startCustomUsernameEffect(effectConfig={}) {
     if(rotation.enable !== false) ctx.rotate(p.angle);
     ctx.globalAlpha=p.opacity;
     ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color;
+    ctx.shadowBlur=Math.max(1,p.size*2.4);
     ctx.beginPath();
     ctx.moveTo(0,-p.size);
-    ctx.lineTo(p.size*.32,-p.size*.32);
-    ctx.lineTo(p.size,0);
-    ctx.lineTo(p.size*.32,p.size*.32);
-    ctx.lineTo(0,p.size);
-    ctx.lineTo(-p.size*.32,p.size*.32);
-    ctx.lineTo(-p.size,0);
-    ctx.lineTo(-p.size*.32,-p.size*.32);
-    ctx.closePath();
+    ctx.quadraticCurveTo(p.size*.25,-p.size*.25,p.size,0);
+    ctx.quadraticCurveTo(p.size*.25,p.size*.25,0,p.size);
+    ctx.quadraticCurveTo(-p.size*.25,p.size*.25,-p.size,0);
+    ctx.quadraticCurveTo(-p.size*.25,-p.size*.25,0,-p.size);
     ctx.fill();
     ctx.restore();
   }
@@ -1392,42 +1433,42 @@ function startCustomUsernameEffect(effectConfig={}) {
     for(const p of particles) {
       p.timer-=dt;
 
-      if(p.state==="hidden") {
+      if(p.state==="hidden"){
         p.opacity=0;
         if(p.timer<=0){p.state="fadeIn";p.timer=p.fade;}
-      } else if(p.state==="fadeIn") {
+      } else if(p.state==="fadeIn"){
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(q*q*(3-2*q));
         if(p.timer<=0){p.state="visible";p.timer=rand(visible,1200,3000);p.opacity=p.max;}
-      } else if(p.state==="visible") {
+      } else if(p.state==="visible"){
         p.opacity=p.max;
         if(p.timer<=0){p.state="fadeOut";p.timer=p.fade;}
       } else {
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
+          const a=anchorPoint();
+          p.ax=a.ax;p.ay=a.ay;p.x=a.x;p.y=a.y;
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
-          const side=Math.floor(Math.random()*4);
-          if(side===0){p.x=Math.random()*width;p.y=0;}
-          else if(side===1){p.x=width;p.y=Math.random()*height;}
-          else if(side===2){p.x=Math.random()*width;p.y=height;}
-          else{p.x=0;p.y=Math.random()*height;}
-          p.bx=p.x;p.by=p.y;
+          p.color=colors[Math.floor(Math.random()*colors.length)];
         }
       }
 
-      p.drift += p.driftSpeed*dt*.001;
-      p.x=p.bx+Math.cos(p.drift)*1.8;
-      p.y=p.by+Math.sin(p.drift*.83)*1.8;
+      p.phase += p.orbitSpeed*dt*.001;
+      p.x = p.ax + Math.cos(p.phase)*p.orbit;
+      p.y = p.ay + Math.sin(p.phase*.87)*p.orbit;
       if(rotation.enable !== false) p.angle += p.spin*dt*.001;
       if(p.opacity>.001) draw(p);
     }
     raf=requestAnimationFrame(tick);
   }
+
   raf=requestAnimationFrame(tick);
 
   const resize=()=>place();
   window.addEventListener("resize",resize,{passive:true});
+  window.addEventListener("scroll",resize,{passive:true});
+
   let ro=null;
   if(window.ResizeObserver){
     ro=new ResizeObserver(place);
@@ -1436,10 +1477,11 @@ function startCustomUsernameEffect(effectConfig={}) {
   if(document.fonts?.ready) document.fonts.ready.then(place).catch(()=>{});
 
   customUsernameAnimations.set("tsparticles-username",{
-    canvas, raf, resize, ro,
+    canvas,raf,resize,ro,
     stop(){
       cancelAnimationFrame(raf);
       window.removeEventListener("resize",resize);
+      window.removeEventListener("scroll",resize);
       if(ro) ro.disconnect();
       container.innerHTML="";
       container.style.cssText="";
