@@ -1238,6 +1238,11 @@ function destroyCustomButterflies(containerId) {
 function destroyCustomUsernameEffect() {
   const state = customUsernameAnimations.get('tsparticles-username');
   if (!state) return;
+  if (typeof state.stop === 'function') {
+    state.stop();
+    customUsernameAnimations.delete('tsparticles-username');
+    return;
+  }
   if (state.raf) cancelAnimationFrame(state.raf);
   if (state.resizeObserver) state.resizeObserver.disconnect();
   if (state.canvas) state.canvas.remove();
@@ -1250,8 +1255,12 @@ function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
   ctx.beginPath(); ctx.moveTo(0,-size); ctx.quadraticCurveTo(size*.28,-size*.28,size,0); ctx.quadraticCurveTo(size*.28,size*.28,0,size); ctx.quadraticCurveTo(-size*.28,size*.28,-size,0); ctx.quadraticCurveTo(-size*.28,-size*.28,0,-size); ctx.fill(); ctx.restore();
 }
 
-// SPARKLE_COORD_FIX_V2 — nếu bạn tìm dòng này trong view-source của trang live
-// (Ctrl+F "SPARKLE_COORD_FIX_V2"), nghĩa là bản script.js mới ĐÃ lên production.
+// SPARKLE_COORD_FIX_V3 — nếu bạn tìm dòng này trong view-source của trang live
+// (Ctrl+F "SPARKLE_COORD_FIX_V3"), nghĩa là bản script.js mới ĐÃ lên production.
+// Đổi hẳn cách định vị: container giờ là con trực tiếp của <body>, toạ độ tính
+// tuyệt đối bằng getBoundingClientRect() + scrollX/scrollY, KHÔNG còn nằm lồng
+// trong span chữ nữa (tránh mọi sai số do flex/inline/transform scale của khối
+// cha .pos-el, vốn là nguồn gốc gây lệch trước đây).
 function startCustomUsernameEffect(effectConfig={}) {
   destroyCustomUsernameEffect();
 
@@ -1274,20 +1283,15 @@ function startCustomUsernameEffect(effectConfig={}) {
   const px=Math.max(0,Number(area.paddingX)||8);
   const py=Math.max(0,Number(area.paddingY)||6);
 
-  // IMPORTANT: make the particle layer a child of the username text itself.
-  // This removes ALL parent/viewport coordinate calculations.
-  if(container.parentElement!==textEl){
-    textEl.appendChild(container);
+  // Container là con của <body>, định vị absolute theo toạ độ TÀI LIỆU
+  // (document), không phải theo textEl nữa — nên không còn bị ảnh hưởng bởi
+  // flex/inline/transform scale của các khối cha ở trên.
+  if(container.parentElement!==document.body){
+    document.body.appendChild(container);
   }
 
   container.style.cssText=[
     "position:absolute",
-    `left:${-px}px`,
-    `top:${-py}px`,
-    "right:auto",
-    "bottom:auto",
-    `width:calc(100% + ${px*2}px)`,
-    `height:calc(100% + ${py*2}px)`,
     "pointer-events:none",
     "overflow:visible",
     "margin:0",
@@ -1296,16 +1300,12 @@ function startCustomUsernameEffect(effectConfig={}) {
     "border:0",
     "box-shadow:none",
     "transform:none",
-    "z-index:0"
+    "z-index:5"
   ].join(";");
-
-  // Keep text above the transparent canvas.
-  textEl.style.position=textEl.style.position||"relative";
-  textEl.style.zIndex="1";
 
   container.innerHTML="";
   const canvas=document.createElement("canvas");
-  canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;background:transparent;";
+  canvas.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;background:transparent;";
   container.appendChild(canvas);
   const ctx=canvas.getContext("2d");
   if(!ctx)return;
@@ -1318,15 +1318,31 @@ function startCustomUsernameEffect(effectConfig={}) {
     return Number.isFinite(min)&&Number.isFinite(max)?min+Math.random()*(max-min):a+Math.random()*(b-a);
   }
 
-  function resize(){
+  // Đo vị trí chữ THẬT trên màn hình (đã tính cả mọi transform/scale của cha)
+  // rồi cộng scrollX/scrollY để ra toạ độ tuyệt đối trong tài liệu. Đây là
+  // NGUỒN DUY NHẤT xác định vị trí quầng kim tuyến — không còn qua % hay calc()
+  // của bất kỳ phần tử cha nào nữa.
+  function measure(){
     const r=textEl.getBoundingClientRect();
-    width=Math.max(1,r.width+px*2);
-    height=Math.max(1,r.height+py*2);
+    return {
+      left: r.left + window.scrollX,
+      top: r.top + window.scrollY,
+      w: Math.max(1,r.width),
+      h: Math.max(1,r.height)
+    };
+  }
+
+  function resize(){
+    const m=measure();
+    width=m.w+px*2;
+    height=m.h+py*2;
     dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.ceil(width*dpr);
     canvas.height=Math.ceil(height*dpr);
-    canvas.style.width=`${width}px`;
-    canvas.style.height=`${height}px`;
+    container.style.left=`${m.left-px}px`;
+    container.style.top=`${m.top-py}px`;
+    container.style.width=`${width}px`;
+    container.style.height=`${height}px`;
   }
   resize();
 
@@ -1352,9 +1368,8 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   const particles=[];
   function spawn(){
-    const r=textEl.getBoundingClientRect();
-    const w=Math.max(1,r.width),h=Math.max(1,r.height);
-    const {x,y}=haloPoint(w,h,px,py);
+    const m=measure();
+    const {x,y}=haloPoint(m.w,m.h,px,py);
 
     particles.push({
       x,y,bx:x,by:y,
@@ -1375,7 +1390,7 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   function draw(p){
     ctx.save();
-    // p.x/p.y giờ đã là toạ độ canvas thật (xem haloPoint), dùng thẳng không cần
+    // p.x/p.y đã là toạ độ canvas thật (xem haloPoint), dùng thẳng không cần
     // cộng/trừ gì thêm.
     ctx.translate(p.x,p.y);
     if(rotation.enable!==false)ctx.rotate(p.angle);
@@ -1416,8 +1431,8 @@ function startCustomUsernameEffect(effectConfig={}) {
         if(p.timer<=0){
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
           // Sinh lại tại một điểm mới trong quầng sáng quanh chữ (không bám cạnh).
-          const r=textEl.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);
-          const np=haloPoint(w,h,px,py);
+          const m=measure();
+          const np=haloPoint(m.w,m.h,px,py);
           p.x=np.x;p.y=np.y;
           p.bx=p.x;p.by=p.y;
           p.color=colors[Math.floor(Math.random()*colors.length)];
@@ -1436,6 +1451,7 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   const resizeHandler=()=>resize();
   window.addEventListener("resize",resizeHandler,{passive:true});
+  window.addEventListener("scroll",resizeHandler,{passive:true});
   let ro=null;
   if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(textEl);}
   if(document.fonts?.ready)document.fonts.ready.then(resize).catch(()=>{});
@@ -1445,9 +1461,11 @@ function startCustomUsernameEffect(effectConfig={}) {
     stop(){
       cancelAnimationFrame(raf);
       window.removeEventListener("resize",resizeHandler);
+      window.removeEventListener("scroll",resizeHandler);
       if(ro)ro.disconnect();
       container.innerHTML="";
       container.removeAttribute("style");
+      if(container.parentElement===document.body) container.remove();
     }
   });
 }
