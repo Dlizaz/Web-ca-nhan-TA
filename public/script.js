@@ -893,21 +893,20 @@ function loop() {
 loop();
 
 // ---------- Hiệu ứng kim tuyến bằng JSON + particle bướm tùy chỉnh ----------
-// Ngoài config tsParticles bình thường, pageParticlesConfig có thể dùng thêm:
-// "butterfly": {
-//   "enable": true,
-//   "src": "/uploads/butterfly.svg",
-//   "ratio": 0.333333,
+// JSON có thể dùng namespace "universal" để tái sử dụng các thiết lập chung
+// cho mọi hiệu ứng về sau. Các trường đều OPTIONAL: thiếu trường nào thì giữ nguyên
+// hành vi của hiệu ứng gốc. Với butterfly, app hỗ trợ thêm fade/timing lifecycle.
+// Ví dụ:
+// "universal": {
 //   "colors": ["#FFFFFF", "#C9B6FF", "#FFBDE6"],
 //   "size": {"min": 18, "max": 32},
-//   "opacity": {"min": 0.35, "max": 0.85},
-//   "fadeTime": {"min": 900, "max": 1800},
-//   "visibleTime": {"min": 2500, "max": 5500},
-//   "hiddenTime": {"min": 1800, "max": 4500},
-//   "move": {"speed": {"min": 0.05, "max": 0.25}},
-//   "rotate": {"min": 0, "max": 360, "speed": {"min": 0.15, "max": 0.6}, "direction": "random"}
-// }
-// Đây vẫn là JSON thuần, nên admin chỉ cần dán 1 khối JSON vào ô hiện có.
+//   "opacity": {"min": 0.35, "max": 0.85, "animation": {"enable": true, "speed": 0.3, "sync": false}},
+//   "move": {"speed": {"min": 0.05, "max": 0.25}, "random": true},
+//   "rotation": {"enable": true, "random": true, "min": 0, "max": 360, "speed": {"min": 0.15, "max": 0.6}},
+//   "fade": {"enable": true, "time": {"min": 900, "max": 1800}},
+//   "timing": {"visible": {"min": 2500, "max": 5500}, "hidden": {"min": 1800, "max": 4500}}
+// },
+// "butterfly": {"enable": true, "src": "/uploads/butterfly.svg", "ratio": 0.333333}
 let cursorEffectMode = 'default';
 let usernameEffectMode = 'default';
 let pageEffectMode = 'default';
@@ -966,6 +965,135 @@ function randomBetween(range) {
 function normalizeColors(colors, fallback = ['#FFFFFF', '#C9B6FF', '#FFBDE6']) {
   const arr = Array.isArray(colors) ? colors.filter((c) => typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) : [];
   return arr.length ? arr.slice(0, 3) : fallback;
+}
+
+// ============================================================================
+// UNIVERSAL PARTICLE SETTINGS
+// Các thiết lập này là tùy chọn và dùng chung cho mọi hiệu ứng JSON.
+// Nếu hiệu ứng không khai báo universal hoặc không có tính năng tương ứng,
+// tsParticles vẫn chạy config gốc bình thường.
+// ============================================================================
+function cloneObject(value) {
+  if (!value || typeof value !== 'object') return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function mergeDefined(base, override) {
+  const result = { ...(base || {}) };
+  if (!override || typeof override !== 'object') return result;
+  Object.keys(override).forEach((key) => {
+    const v = override[key];
+    if (v && typeof v === 'object' && !Array.isArray(v) && result[key] && typeof result[key] === 'object' && !Array.isArray(result[key])) {
+      result[key] = mergeDefined(result[key], v);
+    } else if (v !== undefined) {
+      result[key] = cloneObject(v);
+    }
+  });
+  return result;
+}
+
+function applyUniversalParticleSettings(config) {
+  const universal = config && config.universal;
+  if (!universal || typeof universal !== 'object') return config;
+
+  const particles = config.particles || (config.particles = {});
+
+  // 3 màu: chỉ ghi đè khi người dùng thực sự khai báo universal.colors.
+  const colors = normalizeColors(universal.colors, []);
+  if (colors.length) {
+    particles.color = { ...(particles.color || {}), value: colors };
+  }
+
+  // Kích thước chung. Có thể là số hoặc {min,max}.
+  if (universal.size !== undefined) {
+    particles.size = { ...(particles.size || {}), value: cloneObject(universal.size) };
+  }
+
+  // Độ mờ + fade native của tsParticles.
+  if (universal.opacity !== undefined) {
+    const opacity = universal.opacity;
+    if (typeof opacity === 'number' || (opacity && typeof opacity === 'object' && (opacity.min !== undefined || opacity.max !== undefined))) {
+      const current = particles.opacity || {};
+      particles.opacity = { ...current, value: cloneObject(opacity) };
+    }
+    if (opacity && typeof opacity === 'object' && opacity.animation) {
+      particles.opacity = { ...(particles.opacity || {}), animation: cloneObject(opacity.animation) };
+    }
+  }
+
+  // fade là tên dễ nhớ ở tầng universal. Với tsParticles, fade được biểu diễn
+  // bằng opacity.animation; nếu người dùng đã khai báo animation cụ thể thì ưu tiên nó.
+  if (universal.fade && universal.fade.enable === true && !particles.opacity?.animation?.enable) {
+    particles.opacity = {
+      ...(particles.opacity || {}),
+      animation: {
+        ...(particles.opacity?.animation || {}),
+        enable: true,
+        speed: Number(universal.fade.speed ?? 0.3),
+        sync: universal.fade.sync === true,
+      },
+    };
+  }
+
+  // Tốc độ / hướng / random / straight. Chỉ áp dụng trường nào có trong universal.
+  if (universal.move && typeof universal.move === 'object') {
+    particles.move = mergeDefined(particles.move, universal.move);
+  }
+
+  // Random rotation cho các shape mà tsParticles hỗ trợ rotate.
+  if (universal.rotation && typeof universal.rotation === 'object') {
+    const r = universal.rotation;
+    const rotate = { ...(particles.rotate || {}) };
+    if (r.enable !== false) {
+      if (r.min !== undefined || r.max !== undefined) {
+        rotate.value = {
+          min: Number(r.min ?? 0),
+          max: Number(r.max ?? 360),
+        };
+      }
+      if (r.random === true || r.direction !== undefined) rotate.direction = r.direction || 'random';
+      if (r.speed !== undefined || r.animation !== undefined) {
+        rotate.animation = mergeDefined(rotate.animation, r.animation || {});
+        if (r.speed !== undefined) {
+          rotate.animation.enable = true;
+          rotate.animation.speed = cloneObject(r.speed);
+          if (rotate.animation.sync === undefined) rotate.animation.sync = false;
+        }
+      }
+    }
+    particles.rotate = rotate;
+  }
+
+  // universal không bị gửi sang tsParticles vì đây là namespace riêng của app.
+  delete config.universal;
+  return config;
+}
+
+function buildButterflyConfig(butterfly, universal) {
+  // Butterfly-specific luôn được ưu tiên; universal chỉ làm giá trị mặc định.
+  const u = universal && typeof universal === 'object' ? universal : {};
+  const b = butterfly && typeof butterfly === 'object' ? butterfly : {};
+  const result = { ...b };
+
+  if (result.colors === undefined && u.colors !== undefined) result.colors = cloneObject(u.colors);
+  if (result.size === undefined && u.size !== undefined) result.size = cloneObject(u.size);
+  if (result.opacity === undefined && u.opacity !== undefined) result.opacity = cloneObject(u.opacity);
+  if (result.move === undefined && u.move !== undefined) result.move = cloneObject(u.move);
+  else if (u.move && typeof u.move === 'object') result.move = mergeDefined(u.move, result.move);
+
+  if (result.rotate === undefined && u.rotation !== undefined) result.rotate = cloneObject(u.rotation);
+  else if (u.rotation && typeof u.rotation === 'object') result.rotate = mergeDefined(u.rotation, result.rotate);
+
+  // Lifecycle là phần custom của app, nên chỉ bật khi universal.fade/timing được khai báo.
+  if (result.fadeTime === undefined && u.fade && u.fade.time !== undefined) result.fadeTime = cloneObject(u.fade.time);
+  if (result.visibleTime === undefined && u.timing && u.timing.visible !== undefined) result.visibleTime = cloneObject(u.timing.visible);
+  if (result.hiddenTime === undefined && u.timing && u.timing.hidden !== undefined) result.hiddenTime = cloneObject(u.timing.hidden);
+
+  if (result.opacity && typeof result.opacity === 'object' && u.fade) {
+    result.fade = cloneObject(u.fade);
+  }
+
+  return result;
 }
 
 function colorizeButterflyImage(sourceImage, color) {
@@ -1267,8 +1395,15 @@ async function applyCustomParticles(containerId, configRaw, setMode) {
 
   try {
     const customConfig = JSON.parse(JSON.stringify(config));
-    const butterfly = customConfig.butterfly;
+    const universal = customConfig.universal;
+    const butterfly = customConfig.butterfly
+      ? buildButterflyConfig(customConfig.butterfly, universal)
+      : null;
     const total = Math.max(0, Number(customConfig.particles?.number?.value ?? 45));
+
+    // Universal settings chỉ ghi đè những trường được khai báo. Nếu không có
+    // universal thì config từ particles.js.org được giữ nguyên.
+    applyUniversalParticleSettings(customConfig);
 
     // Nếu có bướm: particles.number.value là TỔNG số particle mong muốn.
     // tsParticles chỉ nhận phần kim tuyến, còn bướm do canvas riêng vẽ.
