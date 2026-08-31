@@ -1,3 +1,13 @@
+
+// === USERNAME EFFECT: compact particle area ===
+// Keeps username particles close to the large name instead of using a large canvas.
+function getCompactUsernameEffectArea(nameEl, paddingX = 18, paddingY = 14) {
+  const r = nameEl.getBoundingClientRect();
+  const w = Math.max(1, Math.ceil(r.width + paddingX * 2));
+  const h = Math.max(1, Math.ceil(r.height + paddingY * 2));
+  return { width: w, height: h, paddingX, paddingY };
+}
+
 // ================= CONFIG =================
 const TYPE_SPEED = 55; // ms mỗi ký tự
 const ERASE_SPEED = 30;
