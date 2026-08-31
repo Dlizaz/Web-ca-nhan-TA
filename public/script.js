@@ -1369,7 +1369,11 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   function draw(p){
     ctx.save();
-    ctx.translate(p.x,p.y);
+    // p.x/p.y là tọa độ tính theo khung chữ (từ haloPoint), có thể âm (vượt ra ngoài
+    // chữ theo padding px/py). Canvas thì lại có gốc (0,0) tại góc trên-trái của
+    // container đã bị dịch ra ngoài đúng (-px,-py) so với chữ, nên phải cộng lại
+    // px/py ở đây để tọa độ hạt khớp đúng vị trí thật quanh chữ, không bị lệch.
+    ctx.translate(p.x+px,p.y+py);
     if(rotation.enable!==false)ctx.rotate(p.angle);
     ctx.globalAlpha=p.opacity;
     ctx.fillStyle=p.color;
