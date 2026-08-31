@@ -294,14 +294,12 @@ body.edit-positions .pos-el .resize-handle {
 /* Container cho hiệu ứng kim tuyến quanh tên khi admin dán code cấu hình tsParticles riêng
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
 .tsparticles-username {
-  position: absolute !important;
-  top: -8px !important;
-  left: -10px !important;
-  width: calc(100% + 20px) !important;
-  height: calc(100% + 16px) !important;
+  /* KHÔNG set position/top/left/width/height ở đây nữa: để JS (startCustomUsernameEffect
+     trong script.js) toàn quyền tính toán theo area.paddingX/paddingY trong JSON config.
+     Nếu để !important ở đây, nó sẽ đè mất tính toán của JS và làm canvas bị lệch/thành khung
+     cứng mỗi khi đổi padding trong JSON. */
   pointer-events: none !important;
   z-index: 0 !important;
-  display: block !important;
   overflow: visible !important;
 }
 
