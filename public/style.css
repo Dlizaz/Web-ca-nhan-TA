@@ -291,11 +291,25 @@ body.edit-positions .pos-el .resize-handle {
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
 .tsparticles-username {
   position: absolute;
-  inset: -16px -24px;
+  top: -16px;
+  left: -24px;
+  width: calc(100% + 48px);
+  height: calc(100% + 32px);
   pointer-events: none;
   z-index: 0;
   display: block;
+  overflow: visible;
 }
+
+.custom-username-effect-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+
 
 .username-sparkles .sparkle {
   position: absolute;
