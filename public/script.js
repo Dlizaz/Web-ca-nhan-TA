@@ -743,31 +743,11 @@ function clampPositionsToViewport() {
   });
 }
 
-// ---------- Responsive viewport layout (guns.lol-style) ----------
-// Không scale toàn #stage bằng JS. Mỗi .pos-el giữ top/left theo % viewport,
-// còn kích thước CSS tự được browser zoom/responsive xử lý. Cách này tránh
-// việc Ctrl +/- làm stage bị scale lần hai rồi khiến profile thu nhỏ/xô lệch.
-function updateStageLayoutScale() {
-  const stageEl = document.getElementById('stage');
-  if (!stageEl) return;
-  stageEl.style.setProperty('--layout-scale', '1');
-}
-
 let clampResizeTimer = null;
-function handleViewportResize() {
-  updateStageLayoutScale();
+window.addEventListener('resize', () => {
   clearTimeout(clampResizeTimer);
-
-  // Chỉ clamp trên thiết bị cảm ứng thực sự. Không clamp theo innerWidth,
-  // vì Ctrl +/- trên desktop cũng làm innerWidth nhỏ đi và sẽ tự kéo lệch layout.
-  const isTouchDevice = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  if (isTouchDevice && window.innerWidth <= 640) {
-    clampResizeTimer = setTimeout(clampPositionsToViewport, 120);
-  }
-}
-
-updateStageLayoutScale();
-window.addEventListener('resize', handleViewportResize, { passive: true });
+  clampResizeTimer = setTimeout(clampPositionsToViewport, 120);
+});
 
 // ---------- Kích thước & màu khung tự chỉnh ----------
 const SCALE_KEYS = ['avatar', 'username', 'bio', 'views', 'links'];
@@ -980,7 +960,6 @@ async function enterSite() {
   await settingsReady;
   overlay.classList.add('fade-out');
   stage.classList.remove('hidden');
-  updateStageLayoutScale();
   requestAnimationFrame(() => {
     stage.classList.add('visible');
     refreshDiscordMarquee();
@@ -1258,8 +1237,13 @@ function destroyCustomButterflies(containerId) {
 }
 
 function destroyCustomUsernameEffect() {
-  // Custom username effect is intentionally kept alive here.
-  // Do not remove its canvas after starting it.
+  const state = customUsernameAnimations.get('tsparticles-username');
+  if (!state) return;
+  if (state.raf) cancelAnimationFrame(state.raf);
+  if (state.resizeObserver) state.resizeObserver.disconnect();
+  if (state.canvas) state.canvas.remove();
+  if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
+  customUsernameAnimations.delete('tsparticles-username');
 }
 
 function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
