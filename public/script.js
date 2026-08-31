@@ -1,5 +1,80 @@
 
-// === USERNAME EFFECT: compact particle area ===
+// === USERNAME EFFECT: tightly anchored to the main username only ===
+function getUsernameEffectTarget() {
+  return document.querySelector("#el-username") ||
+         document.querySelector(".username") ||
+         document.querySelector("[data-username]");
+}
+
+function positionUsernameEffectCanvas(canvas, target, paddingX = 9, paddingY = 7) {
+  if (!canvas || !target) return null;
+
+  const targetRect = target.getBoundingClientRect();
+  const parent = canvas.offsetParent || target.parentElement || document.body;
+  const parentRect = parent.getBoundingClientRect();
+
+  const width = Math.max(1, Math.ceil(targetRect.width + paddingX * 2));
+  const height = Math.max(1, Math.ceil(targetRect.height + paddingY * 2));
+
+  const left = targetRect.left - parentRect.left + (targetRect.width - width) / 2;
+  const top = targetRect.top - parentRect.top + (targetRect.height - height) / 2;
+
+  canvas.style.position = "absolute";
+  canvas.style.left = `${left}px`;
+  canvas.style.top = `${top}px`;
+  canvas.style.right = "auto";
+  canvas.style.bottom = "auto";
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  canvas.style.margin = "0";
+  canvas.style.transform = "none";
+  canvas.style.pointerEvents = "none";
+  canvas.style.zIndex = "0";
+
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.ceil(width * dpr);
+  canvas.height = Math.ceil(height * dpr);
+
+  return { width, height };
+}
+
+function setupUsernameEffectPositioning(canvas) {
+  const target = getUsernameEffectTarget();
+  if (!canvas || !target) return () => {};
+
+  const update = () => {
+    const cfg = window.usernameEffectConfig || {};
+    const area = cfg.area || {};
+    positionUsernameEffectCanvas(
+      canvas,
+      target,
+      Number.isFinite(area.paddingX) ? area.paddingX: 9,
+      Number.isFinite(area.paddingY) ? area.paddingY: 7
+    );
+  };
+
+  update();
+  window.addEventListener("resize", update, { passive: true });
+
+  let observer = null;
+  if ("ResizeObserver" in window) {
+    observer = new ResizeObserver(update);
+    observer.observe(target);
+  }
+
+  // Fonts can change the username's final bounding box after initial load.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(update).catch(() => {});
+  }
+
+  return () => {
+    window.removeEventListener("resize", update);
+    if (observer) observer.disconnect();
+  };
+}
+
+
+
 // Keeps username particles close to the large name instead of using a large canvas.
 function getCompactUsernameEffectArea(nameEl, paddingX = 18, paddingY = 14) {
   const r = nameEl.getBoundingClientRect();
