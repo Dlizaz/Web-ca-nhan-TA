@@ -291,10 +291,10 @@ body.edit-positions .pos-el .resize-handle {
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
 .tsparticles-username {
   position: absolute;
-  top: -16px;
-  left: -24px;
-  width: calc(100% + 48px);
-  height: calc(100% + 32px);
+  top: -7px;
+  left: -9px;
+  width: calc(100% + 18px);
+  height: calc(100% + 14px);
   pointer-events: none;
   z-index: 0;
   display: block;
