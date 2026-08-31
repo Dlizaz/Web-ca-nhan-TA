@@ -1,74 +1,279 @@
 
-// === USERNAME EFFECT v2: viewport-anchored to the main username ===
+/* ============================================================
+   USERNAME EFFECT — TEXT-WRAPPER ENGINE
+   The effect belongs to the username element itself.
+   It does NOT use profile/bio dimensions or viewport positioning.
+   ============================================================ */
 (function () {
-  function usernameTarget() {
+  const DEFAULTS = {
+    count: 45,
+    colors: ["#FFFFFF", "#C9B6FF", "#FFBDE6"],
+    size: { min: 0.8, max: 1.8 },
+    opacity: { min: 0.08, max: 0.85 },
+    area: { paddingX: 10, paddingY: 8 },
+    fadeTime: { min: 1800, max: 3200 },
+    visibleTime: { min: 1200, max: 3000 },
+    hiddenTime: { min: 700, max: 1800 },
+    speed: { min: 0.45, max: 1.15 },
+    rotation: { enable: true, speed: { min: 0.05, max: 0.25 } }
+  };
+
+  let state = null;
+
+  function el() {
     return document.querySelector("#el-username") ||
            document.querySelector(".username") ||
            document.querySelector("[data-username]");
   }
 
-  function placeUsernameCanvas(canvas, paddingX, paddingY) {
-    const target = usernameTarget();
-    if (!canvas || !target) return null;
-
-    const r = target.getBoundingClientRect();
-    const w = Math.max(1, Math.ceil(r.width + paddingX * 2));
-    const h = Math.max(1, Math.ceil(r.height + paddingY * 2));
-
-    // Use viewport coordinates directly. This avoids offsetParent/transform errors.
-    canvas.style.position = "fixed";
-    canvas.style.left = `${Math.round(r.left - paddingX)}px`;
-    canvas.style.top = `${Math.round(r.top - paddingY)}px`;
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-    canvas.style.right = "auto";
-    canvas.style.bottom = "auto";
-    canvas.style.margin = "0";
-    canvas.style.transform = "none";
-    canvas.style.pointerEvents = "none";
-    canvas.style.zIndex = "1";
-
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-
-    return { width: w, height: h, left: r.left - paddingX, top: r.top - paddingY };
+  function merge(a, b) {
+    const out = { ...a, ...b };
+    for (const k of Object.keys(b || {})) {
+      if (b[k] && typeof b[k] === "object" && !Array.isArray(b[k])) {
+        out[k] = merge(a[k] || {}, b[k]);
+      }
+    }
+    return out;
   }
 
-  window.positionUsernameEffectCanvas = function (canvas, cfg) {
-    const area = (cfg && cfg.area) || {};
-    return placeUsernameCanvas(
-      canvas,
-      Number.isFinite(area.paddingX) ? area.paddingX: 9,
-      Number.isFinite(area.paddingY) ? area.paddingY: 7
-    );
-  };
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
 
-  window.watchUsernameEffectCanvas = function (canvas, cfg) {
-    if (!canvas) return function () {};
-    const update = () => window.positionUsernameEffectCanvas(canvas, cfg);
+  function color(colors) {
+    return colors[Math.floor(Math.random() * colors.length)] || "#FFFFFF";
+  }
 
-    update();
-    window.addEventListener("resize", update, { passive: true });
-    window.addEventListener("scroll", update, { passive: true });
-
-    let ro = null;
-    const target = usernameTarget();
-    if ("ResizeObserver" in window && target) {
-      ro = new ResizeObserver(update);
-      ro.observe(target);
+  function ensureWrapper(target) {
+    let wrapper = target.parentElement;
+    if (!wrapper || !wrapper.classList.contains("username-effect-wrapper")) {
+      wrapper = document.createElement("span");
+      wrapper.className = "username-effect-wrapper";
+      target.parentNode.insertBefore(wrapper, target);
+      wrapper.appendChild(target);
     }
+    wrapper.style.position = "relative";
+    wrapper.style.display = "inline-block";
+    wrapper.style.width = "fit-content";
+    wrapper.style.height = "fit-content";
+    wrapper.style.lineHeight = "normal";
+    wrapper.style.isolation = "isolate";
+    return wrapper;
+  }
 
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(update).catch(() => {});
+  function makeCanvas(wrapper) {
+    let canvas = wrapper.querySelector(":scope > .username-effect-canvas");
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.className = "username-effect-canvas";
+      wrapper.insertBefore(canvas, wrapper.firstChild);
     }
+    canvas.style.position = "absolute";
+    canvas.style.pointerEvents = "none";
+    canvas.style.overflow = "visible";
+    canvas.style.left = "0";
+    canvas.style.top = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.margin = "0";
+    canvas.style.transform = "none";
+    canvas.style.zIndex = "2";
+    return canvas;
+  }
 
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update);
-      if (ro) ro.disconnect();
+  function resize(wrapper, canvas, cfg) {
+    const padX = Number(cfg.area?.paddingX ?? 10);
+    const padY = Number(cfg.area?.paddingY ?? 8);
+    const r = wrapper.getBoundingClientRect();
+    const width = Math.max(1, Math.ceil(r.width));
+    const height = Math.max(1, Math.ceil(r.height));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+    // Canvas is exactly the wrapper size. Visual overflow is controlled by CSS
+    // and particle coordinates are generated in the small local username box.
+    canvas.width = Math.ceil(width * dpr);
+    canvas.height = Math.ceil(height * dpr);
+    canvas.style.left = `${-padX}px`;
+    canvas.style.top = `${-padY}px`;
+    canvas.style.width = `${width + padX * 2}px`;
+    canvas.style.height = `${height + padY * 2}px`;
+
+    return { width, height, padX, padY, dpr };
+  }
+
+  function createParticles(area, cfg) {
+    const count = Math.max(1, Math.round(cfg.count ?? 45));
+    const arr = [];
+    for (let i = 0; i < count; i++) {
+      const edge = Math.floor(Math.random() * 4);
+      let x, y;
+      if (edge === 0) {
+        x = rand(-area.padX, area.width + area.padX);
+        y = rand(-area.padY, 0);
+      } else if (edge === 1) {
+        x = rand(area.width, area.width + area.padX);
+        y = rand(-area.padY, area.height + area.padY);
+      } else if (edge === 2) {
+        x = rand(-area.padX, area.width + area.padX);
+        y = rand(area.height, area.height + area.padY);
+      } else {
+        x = rand(-area.padX, 0);
+        y = rand(-area.padY, area.height + area.padY);
+      }
+
+      arr.push({
+        x, y,
+        vx: rand(cfg.speed?.min ?? 0.45, cfg.speed?.max ?? 1.15) * (Math.random() < .5 ? -1 : 1),
+        vy: rand(cfg.speed?.min ?? 0.45, cfg.speed?.max ?? 1.15) * (Math.random() < .5 ? -1 : 1),
+        size: rand(cfg.size?.min ?? .8, cfg.size?.max ?? 1.8),
+        color: color(cfg.colors || DEFAULTS.colors),
+        maxOpacity: rand(cfg.opacity?.min ?? .08, cfg.opacity?.max ?? .85),
+        opacity: 0,
+        phase: "hidden",
+        timer: rand(0, cfg.hiddenTime?.max ?? 1800),
+        fade: 0,
+        angle: rand(0, Math.PI * 2),
+        spin: rand(cfg.rotation?.speed?.min ?? .05, cfg.rotation?.speed?.max ?? .25) *
+              (Math.random() < .5 ? -1 : 1)
+      });
+    }
+    return arr;
+  }
+
+  function drawStar(ctx, p) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+    ctx.beginPath();
+    ctx.moveTo(0, -p.size);
+    ctx.lineTo(p.size * .35, -p.size * .35);
+    ctx.lineTo(p.size, 0);
+    ctx.lineTo(p.size * .35, p.size * .35);
+    ctx.lineTo(0, p.size);
+    ctx.lineTo(-p.size * .35, p.size * .35);
+    ctx.lineTo(-p.size, 0);
+    ctx.lineTo(-p.size * .35, -p.size * .35);
+    ctx.closePath();
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.opacity;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function start(cfgInput) {
+    stop();
+    const cfg = merge(DEFAULTS, cfgInput || {});
+    const target = el();
+    if (!target) return;
+
+    const wrapper = ensureWrapper(target);
+    const canvas = makeCanvas(wrapper);
+    const ctx = canvas.getContext("2d");
+
+    let area = resize(wrapper, canvas, cfg);
+    let particles = createParticles(area, cfg);
+    let last = performance.now();
+    let raf = 0;
+
+    const resetPosition = () => {
+      area = resize(wrapper, canvas, cfg);
+      // Re-create only if dimensions changed materially.
+      if (particles.length) {
+        particles.forEach(p => {
+          p.x = Math.max(-area.padX, Math.min(area.width + area.padX, p.x));
+          p.y = Math.max(-area.padY, Math.min(area.height + area.padY, p.y));
+        });
+      }
     };
-  };
+
+    const ro = "ResizeObserver" in window
+      ? new ResizeObserver(resetPosition)
+      : null;
+    if (ro) ro.observe(wrapper);
+
+    const draw = now => {
+      const dt = Math.min(50, now - last);
+      last = now;
+      const scale = area.dpr;
+
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.clearRect(-area.padX, -area.padY,
+                    area.width + area.padX * 2,
+                    area.height + area.padY * 2);
+
+      for (const p of particles) {
+        p.timer -= dt;
+
+        if (p.phase === "hidden" && p.timer <= 0) {
+          p.phase = "fadeIn";
+          p.timer = rand(cfg.fadeTime?.min ?? 1800, cfg.fadeTime?.max ?? 3200);
+        } else if (p.phase === "fadeIn") {
+          p.opacity = Math.min(p.maxOpacity, p.opacity + dt / p.timer * p.maxOpacity);
+          if (p.timer <= 0) {
+            p.phase = "visible";
+            p.timer = rand(cfg.visibleTime?.min ?? 1200, cfg.visibleTime?.max ?? 3000);
+          }
+        } else if (p.phase === "visible" && p.timer <= 0) {
+          p.phase = "fadeOut";
+          p.timer = rand(cfg.fadeTime?.min ?? 1800, cfg.fadeTime?.max ?? 3200);
+        } else if (p.phase === "fadeOut") {
+          p.opacity = Math.max(0, p.opacity - dt / p.timer * p.maxOpacity);
+          if (p.timer <= 0) {
+            p.opacity = 0;
+            p.phase = "hidden";
+            p.timer = rand(cfg.hiddenTime?.min ?? 700, cfg.hiddenTime?.max ?? 1800);
+            const side = Math.floor(Math.random() * 4);
+            if (side === 0) { p.x = rand(-area.padX, area.width + area.padX); p.y = -area.padY; }
+            if (side === 1) { p.x = area.width + area.padX; p.y = rand(-area.padY, area.height + area.padY); }
+            if (side === 2) { p.x = rand(-area.padX, area.width + area.padX); p.y = area.height + area.padY; }
+            if (side === 3) { p.x = -area.padX; p.y = rand(-area.padY, area.height + area.padY); }
+          }
+        }
+
+        // Keep movement inside a tiny ring around the username.
+        p.x += p.vx * dt / 16.67;
+        p.y += p.vy * dt / 16.67;
+
+        const minX = -area.padX, maxX = area.width + area.padX;
+        const minY = -area.padY, maxY = area.height + area.padY;
+        if (p.x < minX || p.x > maxX) p.vx *= -1;
+        if (p.y < minY || p.y > maxY) p.vy *= -1;
+
+        if (cfg.rotation?.enable !== false) p.angle += p.spin * dt / 1000;
+        if (p.opacity > 0) drawStar(ctx, p);
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    window.addEventListener("resize", resetPosition, { passive: true });
+
+    state = {
+      stop() {
+        cancelAnimationFrame(raf);
+        window.removeEventListener("resize", resetPosition);
+        if (ro) ro.disconnect();
+        canvas.remove();
+        if (wrapper && wrapper.parentElement) {
+          // Restore username to its original parent.
+          const parent = wrapper.parentElement;
+          parent.insertBefore(target, wrapper);
+          wrapper.remove();
+        }
+      }
+    };
+  }
+
+  function stop() {
+    if (state) {
+      state.stop();
+      state = null;
+    }
+  }
+
+  window.startUsernameEffect = start;
+  window.stopUsernameEffect = stop;
 })();
 
 
@@ -1633,3 +1838,30 @@ if (EDIT_POSITIONS) {
     overlay.click();
   });
 }
+
+
+(function initUsernameEffectWhenReady() {
+  let started = false;
+
+  function tryStart() {
+    if (started) return;
+    const target = document.querySelector("#el-username") ||
+                   document.querySelector(".username") ||
+                   document.querySelector("[data-username]");
+    const cfg = window.usernameEffectConfig ||
+                window.__usernameEffectConfig ||
+                (window.currentEffectConfig && window.currentEffectConfig.usernameEffect);
+
+    if (target && cfg && cfg.enable && typeof window.startUsernameEffect === "function") {
+      started = true;
+      window.startUsernameEffect(cfg);
+    }
+  }
+
+  tryStart();
+  const observer = new MutationObserver(tryStart);
+  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+  window.addEventListener("load", tryStart, { once: true });
+  setTimeout(tryStart, 500);
+  setTimeout(tryStart, 1500);
+})();
