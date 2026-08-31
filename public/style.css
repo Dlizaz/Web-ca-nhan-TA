@@ -593,3 +593,15 @@ body.edit-positions .pos-el .resize-handle {
     max-width: 88vw !important;
   }
 }
+
+/* Canvas bướm tùy chỉnh: nền trong suốt, chỉ vẽ bướm, không chặn click. */
+.custom-butterfly-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+  pointer-events: none;
+  z-index: 1;
+}
