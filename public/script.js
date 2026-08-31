@@ -1,3 +1,4 @@
+
 /* ============================================================
    USERNAME EFFECT — TEXT-WRAPPER ENGINE
    The effect belongs to the username element itself.
@@ -1238,11 +1239,6 @@ function destroyCustomButterflies(containerId) {
 function destroyCustomUsernameEffect() {
   const state = customUsernameAnimations.get('tsparticles-username');
   if (!state) return;
-  if (typeof state.stop === 'function') {
-    state.stop();
-    customUsernameAnimations.delete('tsparticles-username');
-    return;
-  }
   if (state.raf) cancelAnimationFrame(state.raf);
   if (state.resizeObserver) state.resizeObserver.disconnect();
   if (state.canvas) state.canvas.remove();
@@ -1255,58 +1251,56 @@ function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
   ctx.beginPath(); ctx.moveTo(0,-size); ctx.quadraticCurveTo(size*.28,-size*.28,size,0); ctx.quadraticCurveTo(size*.28,size*.28,0,size); ctx.quadraticCurveTo(-size*.28,size*.28,-size,0); ctx.quadraticCurveTo(-size*.28,-size*.28,0,-size); ctx.fill(); ctx.restore();
 }
 
-// SPARKLE_COORD_FIX_V3 — nếu bạn tìm dòng này trong view-source của trang live
-// (Ctrl+F "SPARKLE_COORD_FIX_V3"), nghĩa là bản script.js mới ĐÃ lên production.
-// Đổi hẳn cách định vị: container giờ là con trực tiếp của <body>, toạ độ tính
-// tuyệt đối bằng getBoundingClientRect() + scrollX/scrollY, KHÔNG còn nằm lồng
-// trong span chữ nữa (tránh mọi sai số do flex/inline/transform scale của khối
-// cha .pos-el, vốn là nguồn gốc gây lệch trước đây).
 function startCustomUsernameEffect(effectConfig={}) {
   destroyCustomUsernameEffect();
 
   const container=document.getElementById("tsparticles-username");
-  const textEl=document.getElementById("username-text");
   const usernameEl=document.getElementById("el-username");
-  if(!container||!textEl||!usernameEl||effectConfig.enable===false)return;
+  if(!container||!usernameEl||effectConfig.enable===false)return;
 
   const colors=Array.isArray(effectConfig.colors)&&effectConfig.colors.length
     ?effectConfig.colors:["#FFFFFF","#C9B6FF","#FFBDE6"];
   const count=Math.max(1,Math.min(140,Number(effectConfig.count)||45));
   const size=effectConfig.size||{min:.8,max:1.8};
   const opacity=effectConfig.opacity||{min:.08,max:.85};
-  const area=effectConfig.area||{paddingX:10,paddingY:8};
+  const layout=effectConfig.layout||{};
   const speed=effectConfig.speed||{min:.45,max:1.15};
   const fade=effectConfig.fadeTime||{min:1800,max:3200};
   const visible=effectConfig.visibleTime||{min:1200,max:3000};
   const hidden=effectConfig.hiddenTime||{min:700,max:1800};
   const rotation=effectConfig.rotation||{};
 
-  const px=Math.max(0,Number(area.paddingX)||8);
-  const py=Math.max(0,Number(area.paddingY)||6);
+  // IMPORTANT: anchor the effect to the SAME element that defines the visible name.
+  // Do not use a fixed 170px canvas and do not wrap/move the H1. This makes the
+  // effect automatically follow any username font, font-size, responsive width,
+  // or text length without drifting away from the name.
+  const padX=Math.max(0,Number(layout.paddingX ?? 18));
+  const padY=Math.max(0,Number(layout.paddingY ?? 12));
+  const offsetX=Number(layout.offsetX ?? 0);
+  const offsetY=Number(layout.offsetY ?? 0);
 
-  // IMPORTANT:
-  // Keep the original #tsparticles-username element in its original HTML
-  // position. It is already a sibling of #username-text inside #el-username.
-  // The username element itself is position:fixed + transformed by the site's
-  // positioning system, so an absolute child inherits EXACTLY the same
-  // coordinate system. We do NOT append/remove it from <body>.
+  // Keep the original span from index.html. It is absolutely positioned, so it
+  // does not participate in the H1 flex layout and therefore cannot change the name position.
+  if(container.parentElement!==usernameEl) usernameEl.insertBefore(container,usernameEl.firstChild);
+  usernameEl.style.position="relative";
+
   container.style.cssText=[
-    "position:absolute",
-    `left:${-px}px`,
-    `top:${-py}px`,
-    "right:auto",
-    "bottom:auto",
-    `width:calc(100% + ${px*2}px)`,
-    `height:calc(100% + ${py*2}px)`,
-    "pointer-events:none",
-    "overflow:visible",
-    "margin:0",
-    "padding:0",
-    "background:transparent",
-    "border:0",
-    "box-shadow:none",
-    "transform:none",
-    "z-index:0"
+    "position:absolute !important",
+    `left:calc(${-padX}px + ${offsetX}px) !important`,
+    `top:calc(${-padY}px + ${offsetY}px) !important`,
+    `width:calc(100% + ${padX*2}px) !important`,
+    `height:calc(100% + ${padY*2}px) !important`,
+    "margin:0 !important",
+    "padding:0 !important",
+    "right:auto !important",
+    "bottom:auto !important",
+    "pointer-events:none !important",
+    "overflow:visible !important",
+    "background:transparent !important",
+    "border:0 !important",
+    "box-shadow:none !important",
+    "transform:none !important",
+    "z-index:1 !important"
   ].join(";");
 
   container.innerHTML="";
@@ -1316,59 +1310,33 @@ function startCustomUsernameEffect(effectConfig={}) {
   const ctx=canvas.getContext("2d");
   if(!ctx)return;
 
-  let width=1,height=1,dpr=1,raf=0,last=performance.now();
-
+  let cw=1,ch=1,dpr=1,raf=0,last=performance.now();
   function rand(v,a,b){
     if(typeof v==="number")return v;
     const min=Number(v?.min),max=Number(v?.max);
     return Number.isFinite(min)&&Number.isFinite(max)?min+Math.random()*(max-min):a+Math.random()*(b-a);
   }
-
   function resize(){
-    // The containing block is #el-username. Its width/height track the actual
-    // main username line; bio and other profile elements are outside this box.
-    const r=usernameEl.getBoundingClientRect();
-    const w=Math.max(1,r.width),h=Math.max(1,r.height);
-    width=w+px*2;
-    height=h+py*2;
+    // The canvas dimensions come from the H1 itself. If the name changes from
+    // "A" to "A Very Long Name", the particle area changes with it automatically.
+    const r=container.getBoundingClientRect();
+    cw=Math.max(1,r.width); ch=Math.max(1,r.height);
     dpr=Math.min(2,window.devicePixelRatio||1);
-    canvas.width=Math.ceil(width*dpr);
-    canvas.height=Math.ceil(height*dpr);
-    canvas.style.width=`${width}px`;
-    canvas.style.height=`${height}px`;
+    canvas.width=Math.ceil(cw*dpr);
+    canvas.height=Math.ceil(ch*dpr);
   }
   resize();
 
-  // Scatter only in a thin halo around the actual username box.
-  // The center is excluded so particles don't cover the letters.
-  function haloPoint(){
-    const r=usernameEl.getBoundingClientRect();
-    const w=Math.max(1,r.width),h=Math.max(1,r.height);
-    const cw=w+px*2,ch=h+py*2;
-    const innerX0=px+w*.18,innerX1=px+w*.82;
-    const innerY0=py+h*.18,innerY1=py+h*.82;
-    let x,y,tries=0;
-    do{
-      x=Math.random()*cw;
-      y=Math.random()*ch;
-      tries++;
-    }while(tries<12 && x>innerX0&&x<innerX1&&y>innerY0&&y<innerY1);
-    return {x,y};
-  }
-
   const particles=[];
   function spawn(){
-    const p=haloPoint();
     particles.push({
-      x:p.x,y:p.y,bx:p.x,by:p.y,
+      x:Math.random()*cw,y:Math.random()*ch,
       size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
-      max:rand(opacity,.08,.85),
-      opacity:0,state:"hidden",
-      timer:rand(hidden,700,1800),
-      fade:rand(fade,1800,3200),
+      max:rand(opacity,.08,.85),opacity:0,state:"hidden",
+      timer:rand(hidden,700,1800),fade:rand(fade,1800,3200),
       phase:Math.random()*Math.PI*2,
-      drift:1+Math.random()*2.2,
+      drift:.35+Math.random()*1.6,
       driftSpeed:rand(speed,.45,1.15),
       angle:Math.random()*Math.PI*2,
       spin:rand(rotation.speed,.05,.25)*(Math.random()<.5?-1:1)
@@ -1377,28 +1345,18 @@ function startCustomUsernameEffect(effectConfig={}) {
   for(let i=0;i<count;i++)spawn();
 
   function draw(p){
-    ctx.save();
-    ctx.translate(p.x,p.y);
+    ctx.save();ctx.translate(p.x,p.y);
     if(rotation.enable!==false)ctx.rotate(p.angle);
-    ctx.globalAlpha=p.opacity;
-    ctx.fillStyle=p.color;
-    ctx.shadowColor=p.color;
-    ctx.shadowBlur=Math.max(1,p.size*2);
+    ctx.globalAlpha=p.opacity;ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color;ctx.shadowBlur=Math.max(1,p.size*2);
     ctx.beginPath();
-    ctx.moveTo(0,-p.size);
-    ctx.lineTo(p.size*.35,0);
-    ctx.lineTo(0,p.size);
-    ctx.lineTo(-p.size*.35,0);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(0,-p.size);ctx.lineTo(p.size*.35,0);ctx.lineTo(0,p.size);ctx.lineTo(-p.size*.35,0);ctx.closePath();ctx.fill();
     ctx.restore();
   }
 
   function tick(now){
     const dt=Math.min(40,now-last);last=now;
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,width,height);
-
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);
     for(const p of particles){
       p.timer-=dt;
       if(p.state==="hidden"){
@@ -1415,16 +1373,16 @@ function startCustomUsernameEffect(effectConfig={}) {
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
-          const q2=haloPoint();
-          p.x=q2.x;p.y=q2.y;p.bx=q2.x;p.by=q2.y;
+          p.x=Math.random()*cw;p.y=Math.random()*ch;
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
           p.color=colors[Math.floor(Math.random()*colors.length)];
           p.max=rand(opacity,.08,.85);
         }
       }
       p.phase+=p.driftSpeed*dt*.001;
-      p.x=p.bx+Math.cos(p.phase)*p.drift;
-      p.y=p.by+Math.sin(p.phase*.83)*p.drift;
+      p.x+=Math.cos(p.phase)*p.drift*dt*.001;
+      p.y+=Math.sin(p.phase*.83)*p.drift*dt*.001;
+      if(p.x<0)p.x=cw;if(p.x>cw)p.x=0;if(p.y<0)p.y=ch;if(p.y>ch)p.y=0;
       if(rotation.enable!==false)p.angle+=p.spin*dt*.001;
       if(p.opacity>.001)draw(p);
     }
@@ -1432,22 +1390,22 @@ function startCustomUsernameEffect(effectConfig={}) {
   }
   raf=requestAnimationFrame(tick);
 
-  const resizeHandler=resize;
+  const resizeHandler=()=>resize();
   window.addEventListener("resize",resizeHandler,{passive:true});
   let ro=null;
-  if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(usernameEl);}
-  if(document.fonts?.ready)document.fonts.ready.then(resize).catch(()=>{});
+  if(window.ResizeObserver){
+    ro=new ResizeObserver(resize);
+    ro.observe(usernameEl);
+  }
 
   customUsernameAnimations.set("tsparticles-username",{
-    canvas,raf,resizeHandler,ro,
+    canvas,raf,resizeHandler,resizeObserver:ro,
     stop(){
       cancelAnimationFrame(raf);
       window.removeEventListener("resize",resizeHandler);
       if(ro)ro.disconnect();
-      // NEVER remove #tsparticles-username from DOM.
-      // It is part of index.html and must survive config reloads.
-      container.innerHTML="";
-      container.style.cssText="";
+      canvas.remove();
+      customUsernameAnimations.delete("tsparticles-username");
     }
   });
 }
