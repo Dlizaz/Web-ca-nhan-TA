@@ -275,7 +275,11 @@ body.edit-positions .pos-el .resize-handle {
 #username-text {
   position: relative;
   z-index: 1;
+
+  
+  
   font-family: var(--ts-username-font, inherit);
+
 }
 
 /* Kim tuyến bơi lượn quanh tên: các ngôi sao nhỏ tự sinh bằng JS (xem script.js),
@@ -290,12 +294,15 @@ body.edit-positions .pos-el .resize-handle {
 /* Container cho hiệu ứng kim tuyến quanh tên khi admin dán code cấu hình tsParticles riêng
    (thay thế cho các ngôi sao mặc định ở trên, chỉ chạy trong khu vực nhỏ quanh tên) */
 .tsparticles-username {
-  position: absolute;
-  pointer-events: none;
-  z-index: 0;
-  display: block;
-  overflow: visible;
-  margin: 0;
+  position: absolute !important;
+  top: -8px !important;
+  left: -10px !important;
+  width: calc(100% + 20px) !important;
+  height: calc(100% + 16px) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  display: block !important;
+  overflow: visible !important;
 }
 
 .custom-username-effect-canvas {
@@ -634,4 +641,12 @@ body.edit-positions .pos-el .resize-handle {
   z-index: 2 !important;
   margin: 0 !important;
   transform: none !important;
+}
+
+/* Username particles: layout-neutral overlay controlled by script.js. */
+#tsparticles-username {
+  pointer-events: none !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
