@@ -634,3 +634,13 @@ body.edit-positions .pos-el .resize-handle {
   border: 0 !important;
   box-shadow: none !important;
 }
+
+/* Username Effect: the particle layer is absolutely positioned inside #username-text. */
+#username-text { position: relative; }
+#tsparticles-username {
+  pointer-events: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
