@@ -620,14 +620,21 @@ body.edit-positions .pos-el .resize-handle {
   z-index: 1;
 }
 
-/* USERNAME EFFECT v2: the JS positions this canvas over #el-username. */
-#tsparticles-username {
-  position: fixed !important;
-  display: block !important;
+/* Username effect is a child of the exact username wrapper. */
+.username-effect-wrapper {
+  position: relative !important;
+  display: inline-block !important;
+  width: fit-content !important;
+  height: fit-content !important;
+  overflow: visible !important;
+  isolation: isolate !important;
+}
+
+.username-effect-canvas {
+  position: absolute !important;
   pointer-events: none !important;
+  overflow: visible !important;
+  z-index: 2 !important;
   margin: 0 !important;
-  right: auto !important;
-  bottom: auto !important;
   transform: none !important;
-  z-index: 1 !important;
 }
