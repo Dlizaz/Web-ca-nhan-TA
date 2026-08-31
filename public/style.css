@@ -652,20 +652,13 @@ body.edit-positions .pos-el .resize-handle {
   transform: none !important;
 }
 
+/* Username: hide the editor outline so it is not mistaken for the sparkle area. */
+body.edit-positions #el-username {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
 
-/* Final username sparkle bleed fix: give the effect a little breathing room
-   so rotated/glowing particles are never chopped at the canvas edge. */
-#el-username {
-  position: relative !important;
-  overflow: visible !important;
-}
-#tsparticles-username {
-  overflow: visible !important;
-  contain: none !important;
-  clip-path: none !important;
-  -webkit-clip-path: none !important;
-}
-#tsparticles-username canvas {
-  overflow: visible !important;
-  contain: none !important;
+body.edit-positions #el-username.selected-el {
+  outline: none !important;
+  outline-offset: 0 !important;
 }
