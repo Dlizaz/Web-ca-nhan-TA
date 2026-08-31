@@ -652,13 +652,23 @@ body.edit-positions .pos-el .resize-handle {
   transform: none !important;
 }
 
-/* Username: hide the editor outline so it is not mistaken for the sparkle area. */
-body.edit-positions #el-username {
+/* Username editor frame: hidden normally, but fully available while the
+   username is actually selected. This keeps editing intact without making
+   the sparkle area look like a clipped rectangle. */
+body.edit-positions #el-username,
+body.edit-positions #el-username.pos-el {
   outline: none !important;
   outline-offset: 0 !important;
+  box-shadow: none !important;
+  border: 0 !important;
 }
 
 body.edit-positions #el-username.selected-el {
-  outline: none !important;
-  outline-offset: 0 !important;
+  outline: 2px solid var(--accent-2, #ff5c9a) !important;
+  outline-offset: 6px !important;
+  box-shadow: none !important;
+}
+
+body.edit-positions #el-username .resize-handle {
+  display: block !important;
 }
