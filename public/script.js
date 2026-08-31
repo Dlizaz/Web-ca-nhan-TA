@@ -1,77 +1,75 @@
 
-// === USERNAME EFFECT: tightly anchored to the main username only ===
-function getUsernameEffectTarget() {
-  return document.querySelector("#el-username") ||
-         document.querySelector(".username") ||
-         document.querySelector("[data-username]");
-}
+// === USERNAME EFFECT v2: viewport-anchored to the main username ===
+(function () {
+  function usernameTarget() {
+    return document.querySelector("#el-username") ||
+           document.querySelector(".username") ||
+           document.querySelector("[data-username]");
+  }
 
-function positionUsernameEffectCanvas(canvas, target, paddingX = 9, paddingY = 7) {
-  if (!canvas || !target) return null;
+  function placeUsernameCanvas(canvas, paddingX, paddingY) {
+    const target = usernameTarget();
+    if (!canvas || !target) return null;
 
-  const targetRect = target.getBoundingClientRect();
-  const parent = canvas.offsetParent || target.parentElement || document.body;
-  const parentRect = parent.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    const w = Math.max(1, Math.ceil(r.width + paddingX * 2));
+    const h = Math.max(1, Math.ceil(r.height + paddingY * 2));
 
-  const width = Math.max(1, Math.ceil(targetRect.width + paddingX * 2));
-  const height = Math.max(1, Math.ceil(targetRect.height + paddingY * 2));
+    // Use viewport coordinates directly. This avoids offsetParent/transform errors.
+    canvas.style.position = "fixed";
+    canvas.style.left = `${Math.round(r.left - paddingX)}px`;
+    canvas.style.top = `${Math.round(r.top - paddingY)}px`;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    canvas.style.right = "auto";
+    canvas.style.bottom = "auto";
+    canvas.style.margin = "0";
+    canvas.style.transform = "none";
+    canvas.style.pointerEvents = "none";
+    canvas.style.zIndex = "1";
 
-  const left = targetRect.left - parentRect.left + (targetRect.width - width) / 2;
-  const top = targetRect.top - parentRect.top + (targetRect.height - height) / 2;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
 
-  canvas.style.position = "absolute";
-  canvas.style.left = `${left}px`;
-  canvas.style.top = `${top}px`;
-  canvas.style.right = "auto";
-  canvas.style.bottom = "auto";
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  canvas.style.margin = "0";
-  canvas.style.transform = "none";
-  canvas.style.pointerEvents = "none";
-  canvas.style.zIndex = "0";
+    return { width: w, height: h, left: r.left - paddingX, top: r.top - paddingY };
+  }
 
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.ceil(width * dpr);
-  canvas.height = Math.ceil(height * dpr);
-
-  return { width, height };
-}
-
-function setupUsernameEffectPositioning(canvas) {
-  const target = getUsernameEffectTarget();
-  if (!canvas || !target) return () => {};
-
-  const update = () => {
-    const cfg = window.usernameEffectConfig || {};
-    const area = cfg.area || {};
-    positionUsernameEffectCanvas(
+  window.positionUsernameEffectCanvas = function (canvas, cfg) {
+    const area = (cfg && cfg.area) || {};
+    return placeUsernameCanvas(
       canvas,
-      target,
       Number.isFinite(area.paddingX) ? area.paddingX: 9,
       Number.isFinite(area.paddingY) ? area.paddingY: 7
     );
   };
 
-  update();
-  window.addEventListener("resize", update, { passive: true });
+  window.watchUsernameEffectCanvas = function (canvas, cfg) {
+    if (!canvas) return function () {};
+    const update = () => window.positionUsernameEffectCanvas(canvas, cfg);
 
-  let observer = null;
-  if ("ResizeObserver" in window) {
-    observer = new ResizeObserver(update);
-    observer.observe(target);
-  }
+    update();
+    window.addEventListener("resize", update, { passive: true });
+    window.addEventListener("scroll", update, { passive: true });
 
-  // Fonts can change the username's final bounding box after initial load.
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(update).catch(() => {});
-  }
+    let ro = null;
+    const target = usernameTarget();
+    if ("ResizeObserver" in window && target) {
+      ro = new ResizeObserver(update);
+      ro.observe(target);
+    }
 
-  return () => {
-    window.removeEventListener("resize", update);
-    if (observer) observer.disconnect();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(update).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+      if (ro) ro.disconnect();
+    };
   };
-}
+})();
 
 
 
