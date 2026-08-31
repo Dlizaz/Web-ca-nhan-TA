@@ -108,3 +108,42 @@ server.js           Express server: API + phục vụ file tĩnh
 - Ảnh đại diện: png/jpg/webp/gif, tối đa 20MB
 - Nhạc nền: mp3/wav/ogg, tối đa 20MB
 - MongoDB Atlas free tier (M0) giới hạn tổng dung lượng 512MB — đủ dùng cho vài chục ảnh/nhạc, nhưng đừng upload file quá nặng liên tục.
+
+
+## Universal particle settings
+
+Các config hiệu ứng có thể tùy chọn thêm namespace `universal`. Đây là lớp thiết lập chung, không bắt buộc. Nếu không có `universal`, JSON lấy từ thư viện tsParticles được chạy theo config gốc. Nếu có, các trường được khai báo sẽ được áp dụng khi hiệu ứng hỗ trợ: `colors`, `size`, `opacity`, `fade`, `move`, `rotation`. Với custom butterfly, app còn hỗ trợ vòng đời `fadeTime`, `visibleTime`, `hiddenTime`; có thể đặt các giá trị tương ứng trong `universal.fade.time` và `universal.timing`.
+
+Ví dụ:
+
+```json
+{
+  "universal": {
+    "colors": ["#FFFFFF", "#C9B6FF", "#FFBDE6"],
+    "size": {"min": 18, "max": 32},
+    "opacity": {
+      "min": 0.35,
+      "max": 0.85,
+      "animation": {"enable": true, "speed": 0.3, "sync": false}
+    },
+    "move": {"speed": {"min": 0.05, "max": 0.25}, "random": true},
+    "rotation": {
+      "enable": true,
+      "random": true,
+      "min": 0,
+      "max": 360,
+      "speed": {"min": 0.15, "max": 0.6}
+    },
+    "fade": {"enable": true, "speed": 0.3, "time": {"min": 900, "max": 1800}},
+    "timing": {
+      "visible": {"min": 2500, "max": 5500},
+      "hidden": {"min": 1800, "max": 4500}
+    }
+  },
+  "butterfly": {
+    "enable": true,
+    "src": "/uploads/butterfly.svg",
+    "ratio": 0.333333
+  }
+}
+```
