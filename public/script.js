@@ -896,7 +896,7 @@ loop();
 // Ngoài config tsParticles bình thường, pageParticlesConfig có thể dùng thêm:
 // "butterfly": {
 //   "enable": true,
-//   "src": "/uploads/butterfly.png",
+//   "src": "/uploads/butterfly.svg",
 //   "ratio": 0.333333,
 //   "colors": ["#FFFFFF", "#C9B6FF", "#FFBDE6"],
 //   "size": {"min": 8, "max": 16},
@@ -1013,7 +1013,7 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  const src = butterflyConfig.src || '/uploads/butterfly.png';
+  const src = butterflyConfig.src || '/uploads/butterfly.svg';
   const image = new Image();
   image.decoding = 'async';
   image.src = src;
