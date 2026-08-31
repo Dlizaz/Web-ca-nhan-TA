@@ -899,8 +899,11 @@ loop();
 //   "src": "/uploads/butterfly.svg",
 //   "ratio": 0.333333,
 //   "colors": ["#FFFFFF", "#C9B6FF", "#FFBDE6"],
-//   "size": {"min": 8, "max": 16},
+//   "size": {"min": 18, "max": 32},
 //   "opacity": {"min": 0.35, "max": 0.85},
+//   "fadeTime": {"min": 900, "max": 1800},
+//   "visibleTime": {"min": 2500, "max": 5500},
+//   "hiddenTime": {"min": 1800, "max": 4500},
 //   "move": {"speed": {"min": 0.05, "max": 0.25}},
 //   "rotate": {"min": 0, "max": 360, "speed": {"min": 0.15, "max": 0.6}, "direction": "random"}
 // }
@@ -1032,7 +1035,7 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
   if (!butterflyCount) return;
 
   const colors = normalizeColors(butterflyConfig.colors);
-  const sizeRange = randomRange(butterflyConfig.size, 8, 16);
+  const sizeRange = randomRange(butterflyConfig.size, 18, 32);
   const opacityRange = randomRange(butterflyConfig.opacity, 0.35, 0.85);
   const speedConfig = butterflyConfig.move && butterflyConfig.move.speed !== undefined
     ? butterflyConfig.move.speed
@@ -1045,7 +1048,15 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
     360,
   );
   const rotationSpeedRange = randomRange(rotateConfig.speed, 0.15, 0.6);
+
+  // Fade in/out + thời gian hiện + thời gian nghỉ đều random riêng cho từng con.
+  // Có thể cấu hình bằng:
+  // fadeTime:     {min, max}  - thời gian fade IN và fade OUT (ms)
+  // visibleTime:  {min, max}  - thời gian giữ ở trạng thái hiện rõ (ms)
+  // hiddenTime:   {min, max}  - thời gian nghỉ/ẩn trước khi xuất hiện lại (ms)
   const fadeRange = randomRange(butterflyConfig.fadeTime, 900, 1800);
+  const visibleRange = randomRange(butterflyConfig.visibleTime, 2500, 5500);
+  const hiddenRange = randomRange(butterflyConfig.hiddenTime, 1800, 4500);
 
   const canvas = document.createElement('canvas');
   canvas.className = 'custom-butterfly-canvas';
@@ -1069,7 +1080,24 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
   }
 
   resize();
-  window.addEventListener('resize', resize);
+
+  function randomPhase(initial) {
+    // Khi trang vừa mở, mỗi con được rải ngẫu nhiên trong một chu kỳ khác nhau,
+    // tránh cả đàn cùng xuất hiện/biến mất một lúc.
+    if (!initial) return { state: 'hidden', timer: randomBetween(hiddenRange) };
+
+    const roll = Math.random();
+    if (roll < 0.25) {
+      return { state: 'hidden', timer: randomBetween(hiddenRange) };
+    }
+    if (roll < 0.55) {
+      return { state: 'fadeIn', timer: randomBetween(fadeRange) };
+    }
+    if (roll < 0.82) {
+      return { state: 'visible', timer: randomBetween(visibleRange) };
+    }
+    return { state: 'fadeOut', timer: randomBetween(fadeRange) };
+  }
 
   function spawnParticle(initial = false) {
     const angle = Math.random() * Math.PI * 2;
@@ -1077,6 +1105,7 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
     const rotationDirection = Math.random() < 0.5 ? -1 : 1;
     const size = randomBetween(sizeRange);
     const color = colors[Math.floor(Math.random() * colors.length)];
+    const phase = randomPhase(initial);
 
     const p = {
       x: Math.random() * width,
@@ -1087,8 +1116,11 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
       color,
       opacity: 0,
       targetOpacity: randomBetween(opacityRange),
-      age: initial ? Math.random() * 5000 : -Math.random() * 1600,
-      fadeTime: randomBetween(fadeRange),
+      state: phase.state,
+      stateTimer: phase.timer,
+      fadeDuration: randomBetween(fadeRange),
+      visibleDuration: randomBetween(visibleRange),
+      hiddenDuration: randomBetween(hiddenRange),
       rotation: randomBetween(angleRange) * Math.PI / 180,
       rotationDirection,
       rotationSpeed: randomBetween(rotationSpeedRange),
@@ -1097,6 +1129,10 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
       image: null,
     };
 
+    // Đặt opacity hợp lý cho phase ban đầu.
+    if (p.state === 'visible') p.opacity = p.targetOpacity;
+    else if (p.state === 'fadeOut') p.opacity = p.targetOpacity;
+
     p.image = colorizeButterflyImage(image, color);
     particles.push(p);
   }
@@ -1104,6 +1140,57 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
   for (let i = 0; i < butterflyCount; i++) spawnParticle(true);
 
   let lastTime = performance.now();
+
+  function advanceVisibility(p, dt) {
+    p.stateTimer -= dt;
+
+    if (p.state === 'hidden') {
+      p.opacity = 0;
+      if (p.stateTimer <= 0) {
+        p.state = 'fadeIn';
+        p.fadeDuration = randomBetween(fadeRange);
+        p.stateTimer = p.fadeDuration;
+      }
+      return;
+    }
+
+    if (p.state === 'fadeIn') {
+      const progress = Math.max(0, Math.min(1, 1 - p.stateTimer / p.fadeDuration));
+      // Smoothstep để fade mềm hơn, không bật/tắt đột ngột.
+      const eased = progress * progress * (3 - 2 * progress);
+      p.opacity = p.targetOpacity * eased;
+      if (p.stateTimer <= 0) {
+        p.opacity = p.targetOpacity;
+        p.state = 'visible';
+        p.visibleDuration = randomBetween(visibleRange);
+        p.stateTimer = p.visibleDuration;
+      }
+      return;
+    }
+
+    if (p.state === 'visible') {
+      p.opacity = p.targetOpacity;
+      if (p.stateTimer <= 0) {
+        p.state = 'fadeOut';
+        p.fadeDuration = randomBetween(fadeRange);
+        p.stateTimer = p.fadeDuration;
+      }
+      return;
+    }
+
+    // fadeOut
+    const progress = Math.max(0, Math.min(1, 1 - p.stateTimer / p.fadeDuration));
+    const eased = progress * progress * (3 - 2 * progress);
+    p.opacity = p.targetOpacity * (1 - eased);
+    if (p.stateTimer <= 0) {
+      p.opacity = 0;
+      p.state = 'hidden';
+      p.hiddenDuration = randomBetween(hiddenRange);
+      p.stateTimer = p.hiddenDuration;
+      // Mỗi chu kỳ có thể đổi màu/độ sáng nhẹ, nhưng vẫn chỉ lấy trong 3 màu đã chọn.
+      p.targetOpacity = randomBetween(opacityRange);
+    }
+  }
 
   function frame(now) {
     if (!customButterflyCanvases.has(containerId)) return;
@@ -1114,16 +1201,12 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
 
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
-      p.age += dt;
-      if (p.age < 0) continue;
-
-      const fadeIn = Math.min(1, p.age / p.fadeTime);
-      p.opacity = p.targetOpacity * fadeIn;
+      advanceVisibility(p, dt);
 
       p.x += p.vx * dt / 16.67;
       p.y += p.vy * dt / 16.67;
-      p.x += Math.sin(p.age * p.waveSpeed + p.wave) * 0.08;
-      p.y += Math.cos(p.age * p.waveSpeed * 0.75 + p.wave) * 0.05;
+      p.x += Math.sin(now * 0.001 * p.waveSpeed * 60 + p.wave) * 0.08;
+      p.y += Math.cos(now * 0.001 * p.waveSpeed * 45 + p.wave) * 0.05;
       p.rotation += p.rotationDirection * p.rotationSpeed * dt / 1000;
 
       const margin = p.size * 3 + 20;
@@ -1132,6 +1215,10 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
         spawnParticle(false);
         continue;
       }
+
+      // Khi đang nghỉ hoàn toàn thì không vẽ, nhưng bướm vẫn bay ngầm để lần xuất hiện
+      // tiếp theo không bị đứng yên một chỗ.
+      if (p.opacity <= 0.001) continue;
 
       const ratio = p.image.width / Math.max(1, p.image.height);
       const drawHeight = p.size;
@@ -1149,9 +1236,8 @@ async function startCustomButterflyEffect(containerId, butterflyConfig, totalPar
     customButterflyAnimations.set(containerId, raf);
   }
 
-  const oldResize = canvas._milkyResize;
-  if (oldResize) window.removeEventListener('resize', oldResize);
   canvas._milkyResize = resize;
+  window.addEventListener('resize', resize);
   requestAnimationFrame(frame);
 }
 
