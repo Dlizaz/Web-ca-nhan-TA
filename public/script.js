@@ -1250,6 +1250,8 @@ function drawUsernameSparkle(ctx, x, y, size, color, alpha, rotation) {
   ctx.beginPath(); ctx.moveTo(0,-size); ctx.quadraticCurveTo(size*.28,-size*.28,size,0); ctx.quadraticCurveTo(size*.28,size*.28,0,size); ctx.quadraticCurveTo(-size*.28,size*.28,-size,0); ctx.quadraticCurveTo(-size*.28,-size*.28,0,-size); ctx.fill(); ctx.restore();
 }
 
+// SPARKLE_COORD_FIX_V2 — nếu bạn tìm dòng này trong view-source của trang live
+// (Ctrl+F "SPARKLE_COORD_FIX_V2"), nghĩa là bản script.js mới ĐÃ lên production.
 function startCustomUsernameEffect(effectConfig={}) {
   destroyCustomUsernameEffect();
 
@@ -1332,15 +1334,19 @@ function startCustomUsernameEffect(effectConfig={}) {
   // (bám cạnh sẽ luôn vẽ ra một hình chữ nhật/khung, giống guns.lol thì cần scatter
   // tự nhiên: gần xa không đều, không tạo thành đường viền thẳng).
   function haloPoint(w,h,px,py){
-    // Vùng lõi bên trong chữ cần tránh (không rải hạt đè hẳn lên giữa chữ),
-    // càng chữ to thì vùng lõi càng lớn theo tỉ lệ.
-    const coreX=w*0.16, coreY=h*0.16;
+    // Toạ độ trả về là toạ độ CANVAS thật (0,0 = góc trên-trái canvas), KHÔNG phải
+    // toạ độ tương đối theo chữ nữa — để draw() khỏi phải cộng/trừ px,py lần nữa,
+    // tránh lệch do quên cộng bù (đây chính là bug cũ gây kim tuyến dồn lệch 1 bên).
+    // Canvas rộng w+2px, cao h+2py; vùng chữ nằm ở [px, px+w] x [py, py+h].
+    const canvasW=w+px*2, canvasH=h+py*2;
+    const coreX0=px+w*0.16, coreX1=px+w*0.84;
+    const coreY0=py+h*0.16, coreY1=py+h*0.84;
     let x,y,tries=0;
     do{
-      x=-px+Math.random()*(w+px*2);
-      y=-py+Math.random()*(h+py*2);
+      x=Math.random()*canvasW;
+      y=Math.random()*canvasH;
       tries++;
-    }while(tries<6 && x>coreX && x<w-coreX && y>coreY && y<h-coreY);
+    }while(tries<6 && x>coreX0 && x<coreX1 && y>coreY0 && y<coreY1);
     return {x,y};
   }
 
@@ -1369,11 +1375,9 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   function draw(p){
     ctx.save();
-    // p.x/p.y là tọa độ tính theo khung chữ (từ haloPoint), có thể âm (vượt ra ngoài
-    // chữ theo padding px/py). Canvas thì lại có gốc (0,0) tại góc trên-trái của
-    // container đã bị dịch ra ngoài đúng (-px,-py) so với chữ, nên phải cộng lại
-    // px/py ở đây để tọa độ hạt khớp đúng vị trí thật quanh chữ, không bị lệch.
-    ctx.translate(p.x+px,p.y+py);
+    // p.x/p.y giờ đã là toạ độ canvas thật (xem haloPoint), dùng thẳng không cần
+    // cộng/trừ gì thêm.
+    ctx.translate(p.x,p.y);
     if(rotation.enable!==false)ctx.rotate(p.angle);
     ctx.globalAlpha=p.opacity;
     ctx.fillStyle=p.color;
