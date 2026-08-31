@@ -1318,6 +1318,8 @@ function startCustomUsernameEffect(effectConfig={}) {
   if(!ctx)return;
 
   let cw=1,ch=1,dpr=1,raf=0,last=performance.now();
+  // Extra bleed keeps sparkle shapes from being clipped at the canvas edge.
+  const bleed=Math.max(6, Math.ceil(Number(size?.max)||1) * 4);
   function rand(v,a,b){
     if(typeof v==="number")return v;
     const min=Number(v?.min),max=Number(v?.max);
@@ -1329,15 +1331,19 @@ function startCustomUsernameEffect(effectConfig={}) {
     const r=container.getBoundingClientRect();
     cw=Math.max(1,r.width); ch=Math.max(1,r.height);
     dpr=Math.min(2,window.devicePixelRatio||1);
-    canvas.width=Math.ceil(cw*dpr);
-    canvas.height=Math.ceil(ch*dpr);
+    canvas.width=Math.ceil((cw+bleed*2)*dpr);
+    canvas.height=Math.ceil((ch+bleed*2)*dpr);
+    canvas.style.left=`-${bleed}px`;
+    canvas.style.top=`-${bleed}px`;
+    canvas.style.width=`calc(100% + ${bleed*2}px)`;
+    canvas.style.height=`calc(100% + ${bleed*2}px)`;
   }
   resize();
 
   const particles=[];
   function spawn(){
     particles.push({
-      x:Math.random()*cw,y:Math.random()*ch,
+      x:bleed+Math.random()*cw,y:bleed+Math.random()*ch,
       size:rand(size,.7,1.7),
       color:colors[Math.floor(Math.random()*colors.length)],
       max:rand(opacity,.08,.85),opacity:0,state:"hidden",
@@ -1363,7 +1369,7 @@ function startCustomUsernameEffect(effectConfig={}) {
 
   function tick(now){
     const dt=Math.min(40,now-last);last=now;
-    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw+bleed*2,ch+bleed*2);
     for(const p of particles){
       p.timer-=dt;
       if(p.state==="hidden"){
@@ -1380,7 +1386,7 @@ function startCustomUsernameEffect(effectConfig={}) {
         const q=Math.max(0,Math.min(1,1-p.timer/p.fade));
         p.opacity=p.max*(1-q*q*(3-2*q));
         if(p.timer<=0){
-          p.x=Math.random()*cw;p.y=Math.random()*ch;
+          p.x=bleed+Math.random()*cw;p.y=bleed+Math.random()*ch;
           p.state="hidden";p.timer=rand(hidden,700,1800);p.opacity=0;
           p.color=colors[Math.floor(Math.random()*colors.length)];
           p.max=rand(opacity,.08,.85);
@@ -1389,7 +1395,7 @@ function startCustomUsernameEffect(effectConfig={}) {
       p.phase+=p.driftSpeed*dt*.001;
       p.x+=Math.cos(p.phase)*p.drift*dt*.001;
       p.y+=Math.sin(p.phase*.83)*p.drift*dt*.001;
-      if(p.x<0)p.x=cw;if(p.x>cw)p.x=0;if(p.y<0)p.y=ch;if(p.y>ch)p.y=0;
+      if(p.x<bleed)p.x=cw+bleed;if(p.x>cw+bleed)p.x=bleed;if(p.y<bleed)p.y=ch+bleed;if(p.y>ch+bleed)p.y=bleed;
       if(rotation.enable!==false)p.angle+=p.spin*dt*.001;
       if(p.opacity>.001)draw(p);
     }
